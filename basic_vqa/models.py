@@ -25,7 +25,7 @@ class ImgEncoder(nn.Module):
     def forward(self, image):
         """Extract feature vector from image vector.
         """
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         with torch.no_grad():
             img_feature = self.model(image)                  # [batch_size, vgg16(19)_fc=4096]
         img_feature = self.fc(img_feature)                   # [batch_size, embed_size]
@@ -48,7 +48,7 @@ class QstEncoder(nn.Module):
 
     def forward(self, question):
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         qst_vec = self.word2vec(question)                             # [batch_size, max_qst_length=30, word_embed_size=300]
         qst_vec = self.tanh(qst_vec)
         qst_vec = qst_vec.transpose(0, 1)                             # [max_qst_length=30, batch_size, word_embed_size=300]
@@ -76,7 +76,7 @@ class VqaModel(nn.Module):
 
     def forward(self, img, qst):
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         img_feature = self.img_encoder(img)                     # [batch_size, embed_size]
         qst_feature = self.qst_encoder(qst)                     # [batch_size, embed_size]
         combined_feature = torch.mul(img_feature, qst_feature)  # [batch_size, embed_size]

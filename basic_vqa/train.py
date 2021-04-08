@@ -121,8 +121,8 @@ def main(args):
                     if phase == 'train':
                         loss.backward()
                         nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-                        # accumulate gradients for 32 batches
-                        if ( batch_idx+1 ) % 32 == 0:
+                        # accumulate gradients for n batches
+                        if ( batch_idx+1 ) % 1 == 0:
                             # STAGE 1: Update weights of ( E, F ) in encoder-decoder 
                             # model using training data
                             optimizer.step()

@@ -172,7 +172,7 @@ class Network(nn.Module):
     return logits
 
   def _loss(self, images, questions, labels):
-    logits = self._vqa_model()( images, questions )
+    logits, _ = self._vqa_model()( images, questions )
     # logits = self(input)
     return self._criterion(logits, labels) 
 

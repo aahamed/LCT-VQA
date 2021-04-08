@@ -61,7 +61,7 @@ def vqa_processing(image_dir, annotation_file, question_file, valid_answer_set, 
 
 def main(args):
     
-    image_dir = args.input_dir+'/Resized_Images/%s/'
+    image_dir = args.input_dir+'/Resized_Images64/%s/'
     annotation_file = args.input_dir+'/Annotations/v2_mscoco_%s_annotations.json'
     question_file = args.input_dir+'/Questions/v2_OpenEnded_mscoco_%s_questions.json'
 

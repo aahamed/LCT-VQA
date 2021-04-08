@@ -2,3 +2,4 @@ png/exp*
 logs/*
 models/*
 *.swp
+experiment_data/*

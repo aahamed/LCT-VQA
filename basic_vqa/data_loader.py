@@ -34,7 +34,10 @@ class VqaDataset(data.Dataset):
         image = vqa[idx]['image_path']
         image = Image.open(image).convert('RGB')
         qst2idc = np.array([qst_vocab.word2idx('<pad>')] * max_qst_length)  # padded with '<pad>' in 'ans_vocab'
-        qst2idc[:len(vqa[idx]['question_tokens'])] = [qst_vocab.word2idx(w) for w in vqa[idx]['question_tokens']]
+        qst2idc[0] = qst_vocab.word2idx('<start>')
+        qst2idc[1:len(vqa[idx]['question_tokens'])+1] = \
+                [qst_vocab.word2idx(w) for w in vqa[idx]['question_tokens']]
+        qst2idc[len(vqa[idx]['question_tokens'])+1] = qst_vocab.word2idx('<end>')
         sample = {'image': image, 'question': qst2idc}
 
         if load_ans:
@@ -78,6 +81,7 @@ def get_loader(input_dir, input_vqa_train, input_vqa_valid, max_qst_length, max_
             max_num_ans=max_num_ans,
             transform=transform['valid'])}
 
+    # indices for subset
     data_idc = {
         phase: list( range( int( np.floor( 
             train_portion * len( vqa_dataset[phase] ) ) ) ) ) 
@@ -101,7 +105,7 @@ def get_loader(input_dir, input_vqa_train, input_vqa_valid, max_qst_length, max_
     return data_loader
 
 def test():
-    input_dir = '../data/vqa/'
+    input_dir = '../../data/vqa/inputs64'
     max_qst_length = 30
     max_num_ans = 10
     batch_size = 4
