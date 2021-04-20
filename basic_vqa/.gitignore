@@ -3,3 +3,5 @@ logs/*
 models/*
 *.swp
 experiment_data/*
+*.bak
+ignore/*

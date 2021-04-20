@@ -36,6 +36,11 @@ class Experiment( object ):
             num_workers=args.num_workers,
             train_portion=args.train_portion)
 
+        self.qst_vocab = self.data_loader['train'].\
+                dataset.dataset.qst_vocab
+        self.ans_vocab = self.data_loader['train'].\
+                dataset.dataset.ans_vocab
+
         # setup experiment params
         self.epochs = args.num_epochs
         self.current_epoch = 0
@@ -62,7 +67,7 @@ class Experiment( object ):
         self.architect = None 
         if ARCH_TYPE == 'darts':
             # instantiate architect for architecture search
-            self.architect = Architect(self.ef_model.img_encoder.darts, args)
+            self.architect = Architect(self.ef_model, args)
 
         self.init_model()
 
@@ -117,13 +122,36 @@ class Experiment( object ):
             self.log( f'Starting Epoch: {epoch+1}' )
             if ARCH_TYPE == 'darts':
                 self.log( f'genotype: {self.ef_model.genotype()}' )
-            # start_time = datetime.now()
             self.current_epoch = epoch
             self.train()
             self.val()
             self.ef_scheduler.step()
             self.save_model()
             self.record_stats()
+
+    def evaluate_gen_qst( self, batch_sample ):
+        # import pdb; pdb.set_trace()
+        image = batch_sample['image'].to(DEVICE)
+        question = batch_sample['question']
+        answer = batch_sample['answer_label']
+        image_path = batch_sample['image_path']
+        # ground truth question and answers
+        qst = [ self.qst_vocab.arr2qst( q ) for q in question ]
+        ans = [ self.ans_vocab.idx2word( a ) for a in answer ]
+        
+        # generated question-answer
+        gen_question, gen_answer = self.ef_model.generate( image )
+        gen_answer = torch.argmax( gen_answer, 1 )
+        gen_qst = [ self.qst_vocab.arr2qst( q ) for q in gen_question ]
+        gen_ans = [ self.ans_vocab.idx2word( a ) for a in gen_answer ]
+
+        n = min( 4, len( image ) )
+        self.log( 'Evaluating question answer pairs' )
+        for i in range( n ):
+            self.log( f'image path:{image_path[i]}' )
+            self.log( f'ground truth qst: {qst[i]} ans: {ans[i]}' )
+            self.log( f'generated qst: {gen_qst[i]} ans: {gen_ans[i]}' )
+
 
     def train( self ):
         self.ef_model.train()
@@ -137,17 +165,30 @@ class Experiment( object ):
         batch_step_size = len( self.data_loader['train'] )
         ans_unk_idx = dataset.dataset.ans_vocab.unk2idx
         valid_queue_iter = cycle( iter( self.data_loader['valid'] ) )
+        lr = self.ef_scheduler.get_lr()[0]
         # import pdb; pdb.set_trace()
         
         for batch_idx, batch_sample in enumerate( self.data_loader['train'] ):
             # zero out gradients
             self.ef_optimizer.zero_grad()
-
+            
             # get training data
             image = batch_sample['image'].to(DEVICE)
             question = batch_sample['question'].to(DEVICE)
             label = batch_sample['answer_label'].to(DEVICE)
             multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
+            
+            if ARCH_TYPE == 'darts':
+                # STAGE 3: Architecture Search
+                # Update architecture of E in encoder-decoder model 
+                # using validation data
+                batch_sample = next( valid_queue_iter )
+                val_image = batch_sample['image'].to(DEVICE)
+                val_question = batch_sample['question'].to(DEVICE)
+                val_label = batch_sample['answer_label'].to(DEVICE)
+                # import pdb; pdb.set_trace()
+                self.architect.step( image, question, label,
+                        val_image, val_question, val_label, lr )
             
             # STAGE 1: Update weights of encoder-decoder model
             # using training data
@@ -156,10 +197,9 @@ class Experiment( object ):
             _, ef_pred1 = torch.max(ans_out, 1)  # [batch_size]
             _, ef_pred2 = torch.max(ans_out, 1)  # [batch_size]
             ans_loss = self.criterion(ans_out, label)
-            K = question.shape[0] * question.shape[1]
-            qst = question.view( K )
-            qst_out = qst_out.view( K, -1 )
-            qst_loss = self.criterion(qst_out[:-1], qst[1:])
+            qst = question[:, 1:].flatten()
+            qst_out = qst_out[:, :-1].flatten(end_dim=1)
+            qst_loss = self.criterion(qst_out, qst)
             loss = ans_loss + qst_loss
             loss.backward()
             nn.utils.clip_grad_norm_(self.ef_model.parameters(), self.args.grad_clip)
@@ -178,38 +218,25 @@ class Experiment( object ):
                           .format(self.current_epoch+1, self.epochs,
                               batch_idx, int(batch_step_size), loss.item()))
            
-            # if ARCH_TYPE == 'fixed':
-                # only perform stage 1 if architecture is fixed
-            #    continue
-
-            # STAGE 2: Train W vqa model using the
-            # pseudo qa tests generated by EF
-
-            # generate pseudo qa tests
-            pseudo_qst, pseudo_ans = self.ef_model.generate( image )
-            w_out = self.w_model( image, pseudo_qst )
-            _, pseudo_ans = torch.max( pseudo_ans, 1 )
-            loss = self.criterion( w_out, pseudo_ans )
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.w_model.parameters(), self.args.grad_clip)
-            _, w_pred = torch.max( w_out, 1 )
-            w_corr += ( w_pred == pseudo_ans ).sum().item()
-            w_loss += loss.item()
-            
             if ARCH_TYPE == 'fixed':
                 # only perform stage 1 if architecture is fixed
                 continue
+            
+            if not SKIP_STAGE2:
+                # STAGE 2: Train W vqa model using the
+                # pseudo qa tests generated by EF
 
-            # STAGE 3: Architecture Search
-            # Update architecture of E in encoder-decoder model 
-            # using validation data
-            batch_sample = next( valid_queue_iter )
-            val_image = batch_sample['image'].to(DEVICE)
-            val_question = batch_sample['question'].to(DEVICE)
-            val_label = batch_sample['answer_label'].to(DEVICE)
-            # import pdb; pdb.set_trace()
-            self.architect.step( image, question, label,
-                    val_image, val_question, val_label )
+                # generate pseudo qa tests
+                pseudo_qst, pseudo_ans = self.ef_model.generate( image )
+                w_out = self.w_model( image, pseudo_qst )
+                _, pseudo_ans = torch.max( pseudo_ans, 1 )
+                loss = self.criterion( w_out, pseudo_ans )
+                loss.backward()
+                nn.utils.clip_grad_norm_(self.w_model.parameters(), self.args.grad_clip)
+                _, w_pred = torch.max( w_out, 1 )
+                w_corr += ( w_pred == pseudo_ans ).sum().item()
+                w_loss += loss.item()
+            
 
         # Print the average loss and accuracy in an epoch.
         ef_loss = ef_loss / batch_step_size
@@ -226,6 +253,8 @@ class Experiment( object ):
                 f'EF-Acc: {ef_acc_2:.4f}, ' +
                 f'W-Loss: {w_loss:.4f}, ' +
                 f'W-Acc: {w_acc:.4f}' )
+
+        self.evaluate_gen_qst( batch_sample )
             
 
     def val( self ):

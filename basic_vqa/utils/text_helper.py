@@ -35,9 +35,22 @@ class VocabDict:
         elif self.unk2idx is not None:
             return self.unk2idx
         else:
-            raise ValueError('word %s not in dictionary (while dictionary does not contain <unk>)' % w)
+            raise ValueError(f'word {w} not in dictionary ' + 
+                    '(while dictionary does not contain <unk>)')
 
     def tokenize_and_index(self, sentence):
         inds = [self.word2idx(w) for w in tokenize(sentence)]
 
         return inds
+
+    def arr2qst(self, arr):
+        # convert indices to words
+        words = [ self.idx2word( i ) for i in arr ]
+        meta = [ '<start>', '<end>', '<pad>' ]
+        # strip meta words
+        words = [ w for w in words if w not in meta ]
+        # qst = ' '.join( words[:-1] ) + words[-1]
+        qst = ' '.join( words )
+        return qst
+
+

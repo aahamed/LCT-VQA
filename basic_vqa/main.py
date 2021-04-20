@@ -42,6 +42,12 @@ if __name__ == '__main__':
 
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='learning rate for training.')
+    
+    parser.add_argument('--momentum', type=float, default=0.99,
+                        help='momentum for sgd optimizer')
+    
+    parser.add_argument('--weight_decay', type=float, default=0,
+                        help='weight_decay for sgd optimizer')
 
     parser.add_argument('--step_size', type=int, default=10,
                         help='period of learning rate decay.')

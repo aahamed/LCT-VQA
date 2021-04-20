@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 from pcdarts.model_search import Network
 from constants import *
+from torch.utils.data import WeightedRandomSampler
 
 class ImgEncoder(nn.Module):
 
@@ -78,6 +79,7 @@ class QstEncoder(nn.Module):
         self.lstm = nn.LSTM(word_embed_size, hidden_size, num_layers)
         self.fc1 = nn.Linear(2*num_layers*hidden_size, embed_size)     # 2 for hidden and cell states
         self.fc2 = nn.Linear(hidden_size, qst_vocab_size)
+        self.softmax = torch.nn.Softmax(dim=2)
         # weight initialization
         torch.nn.init.xavier_uniform_(self.fc1.weight.data)
         torch.nn.init.xavier_uniform_(self.fc2.weight.data)
@@ -122,8 +124,8 @@ class QstEncoder(nn.Module):
         self.lstm.flatten_parameters()
         hidden_state = image_embedding.view(1, -1, self.hidden_size )
 
-        # create start tokens
-        start_word = torch.ones( (batch_size, 1) ).long().to( DEVICE )
+        # create start tokens ( numerical value 2 )
+        start_word = torch.ones( (batch_size, 1) ).long().to( DEVICE ) * 2
         start_vec = self.word2vec( start_word )
         start_vec = self.tanh( start_vec )
         start_vec = start_vec.transpose(0, 1)
@@ -179,6 +181,13 @@ class VqaModel(nn.Module):
         self.dropout = nn.Dropout(0.5)
         self.fc1 = nn.Linear(embed_size, ans_vocab_size)
         self.fc2 = nn.Linear(ans_vocab_size, ans_vocab_size)
+        self.criterion = nn.CrossEntropyLoss()
+        self.embed_size = embed_size
+        self.qst_vocab_size = qst_vocab_size
+        self.ans_vocab_size = ans_vocab_size
+        self.word_embed_size = word_embed_size
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
 
     def forward(self, img, qst):
 
@@ -227,9 +236,32 @@ class VqaModel(nn.Module):
     def genotype( self ):
         return self.img_encoder.darts.genotype()
 
+    def arch_parameters( self ):
+        return self.img_encoder.darts.arch_parameters()
+
+    def _loss(self, images, questions, labels):
+        ans_out, qst_out = self( images, questions )
+        ans_loss = self.criterion( ans_out, labels )
+        qst = questions[:, 1:].flatten()
+        qst_out = qst_out[:, :-1].flatten(end_dim=1)
+        qst_loss = self.criterion( qst_out, qst )
+        loss = ans_loss + qst_loss
+        return loss
+
+    def new( self ):
+        new_darts = self.img_encoder.darts.new()
+        new_vqa_model = VqaModel( self.embed_size,
+                self.qst_vocab_size, self.ans_vocab_size,
+                self.word_embed_size, self.num_layers,
+                self.hidden_size )
+        new_vqa_model.img_encoder.darts = new_darts
+        new_vqa_model.to( DEVICE )
+        return new_vqa_model
+
 def test_vqa():
-    global DEVICE
+    global DEVICE, ARCH_TYPE
     DEVICE = 'cpu'
+    ARCH_TYPE = 'darts'
     print( 'Test VQA model' )
     embed_size = 512
     qst_vocab_size = 8192
@@ -254,12 +286,20 @@ def test_vqa():
     labels = torch.randint( ans_vocab_size, (batch_size, ) )
     # test architecture loss
     # loss = model.img_encoder.darts._loss( img, qst, labels )
+    new_model = model.new()
+    loss = new_model._loss( img, qst, labels )
     # test teacher forcing
-    N = batch_size * qst_max_len
-    qst = qst.view( N )
-    qst_out = qst_out.view( N, -1 )
-    qst_loss = criterion( qst_out[:-1], qst[1:] )
+    N = batch_size * ( qst_max_len - 1 )
+    qst = qst[:, 1:].flatten()
+    qst_out = qst_out[:, :-1].flatten( end_dim=1 )
+    qst_loss = criterion( qst_out, qst )
     # test qa generation
+    qst, ans = model.generate( img )
+    assert ans.shape == ( batch_size, ans_vocab_size )
+    assert qst.shape == ( batch_size, qst_max_len )
+    # test stochastic generation
+    model.qst_encoder.deterministic = False
+    model.qst_encoder.temperature = 0.01
     qst, ans = model.generate( img )
     assert ans.shape == ( batch_size, ans_vocab_size )
     assert qst.shape == ( batch_size, qst_max_len )
