@@ -2,6 +2,9 @@ import torch
 import logging
 import sys
 import os
+import config
+import random
+import numpy as np
 from datetime import datetime
 from constants import *
 from torch import nn
@@ -21,20 +24,26 @@ class Experiment( object ):
 
     def __init__( self, args ):
         import pdb; pdb.set_trace()
-        self.args = args
-        self.name = args.exp
+        # self.args = args
+        self.name = config.EXP_NAME
         self.exp_dir = os.path.join( ROOT_STATS_DIR, self.name )
+        
+        # set seed
+        seed = config.SEED if config.SEED else random.randint(0, 1e5)
+        torch.manual_seed( seed )
+        random.seed( seed )
+        np.random.seed(0)
 
         # get dataloaders for training and validation
         self.data_loader = get_loader(
-            input_dir=args.input_dir,
+            input_dir=config.INPUT_DIR,
             input_vqa_train='train.npy',
             input_vqa_valid='valid.npy',
-            max_qst_length=args.max_qst_length,
-            max_num_ans=args.max_num_ans,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-            train_portion=args.train_portion)
+            max_qst_length=config.MAX_QST_LEN,
+            max_num_ans=config.MAX_NUM_ANS,
+            batch_size=config.BATCH_SIZE,
+            num_workers=config.NUM_WORKERS,
+            train_portion=config.TRAIN_PORTION)
 
         self.qst_vocab = self.data_loader['train'].\
                 dataset.dataset.qst_vocab
@@ -42,36 +51,37 @@ class Experiment( object ):
                 dataset.dataset.ans_vocab
 
         # setup experiment params
-        self.epochs = args.num_epochs
+        self.epochs = config.NUM_EPOCHS
         self.current_epoch = 0
         self.best_model = None
 
         # init criterion, models, optimizers, schedulers
         # ef_* corresponds to encoder-decoder model
         self.criterion = nn.CrossEntropyLoss()
-        self.ef_model = get_ef_model( args,
+        self.ef_model = get_ef_model(
                 self.data_loader['train'].dataset.dataset )
-        self.ef_optimizer = get_ef_optimizer( self.ef_model, args )
-        self.ef_scheduler = get_ef_scheduler( self.ef_optimizer, args )
+        self.ef_optimizer = get_ef_optimizer( self.ef_model )
+        self.ef_scheduler = get_ef_scheduler( self.ef_optimizer )
         self.train_ef_loss = []
         self.train_ef_acc = []
         self.val_ef_loss = []
         self.val_ef_acc = []
 
-        self.w_model = get_w_model( args,
+        self.w_model = get_w_model(
                 self.data_loader['train'].dataset.dataset )
-        self.w_optimizer = get_w_optimizer( self.w_model, args )
-        self.w_scheduler = get_w_scheduler( self.w_optimizer, args )
+        self.w_optimizer = get_w_optimizer( self.w_model )
+        self.w_scheduler = get_w_scheduler( self.w_optimizer )
 
 
         self.architect = None 
         if ARCH_TYPE == 'darts':
             # instantiate architect for architecture search
-            self.architect = Architect(self.ef_model, args)
+            self.architect = Architect(self.ef_model)
 
         self.init_model()
 
         self.load_experiment()
+        self.log( f'seed is: {seed}' )
 
     
     def setup_logger( self ):
@@ -88,7 +98,7 @@ class Experiment( object ):
         os.makedirs(ROOT_STATS_DIR, exist_ok=True)
 
         if os.path.exists(self.exp_dir):
-            if not self.args.resume:
+            if not config.RESUME:
                 # if resume option is not specified
                 # check to make sure exp_dir is empty
                 files = os.listdir( self.exp_dir )
@@ -202,7 +212,7 @@ class Experiment( object ):
             qst_loss = self.criterion(qst_out, qst)
             loss = ans_loss + qst_loss
             loss.backward()
-            nn.utils.clip_grad_norm_(self.ef_model.parameters(), self.args.grad_clip)
+            nn.utils.clip_grad_norm_(self.ef_model.parameters(), config.GRAD_CLIP)
             self.ef_optimizer.step()
             
             # Evaluation metric of 'multiple choice'
@@ -232,7 +242,7 @@ class Experiment( object ):
                 _, pseudo_ans = torch.max( pseudo_ans, 1 )
                 loss = self.criterion( w_out, pseudo_ans )
                 loss.backward()
-                nn.utils.clip_grad_norm_(self.w_model.parameters(), self.args.grad_clip)
+                nn.utils.clip_grad_norm_(self.w_model.parameters(), config.GRAD_CLIP)
                 _, w_pred = torch.max( w_out, 1 )
                 w_corr += ( w_pred == pseudo_ans ).sum().item()
                 w_loss += loss.item()

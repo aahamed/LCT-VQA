@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from torch.autograd import Variable
+from config import *
 
 
 def _concat(xs):
@@ -10,14 +11,15 @@ def _concat(xs):
 
 class Architect(object):
 
-  def __init__(self, model, args):
+  def __init__(self, model):
     # self.network_momentum = args.momentum
     # self.network_weight_decay = args.weight_decay
     self.network_momentum = 0
     self.network_weight_decay = 0
     self.model = model
     self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
-        lr=args.arch_learning_rate, betas=(0.5, 0.999), weight_decay=args.arch_weight_decay)
+        lr=ARCH_LEARNING_RATE, betas=(0.5, 0.999),
+        weight_decay=ARCH_WEIGHT_DECAY)
 
   def _compute_unrolled_model(self, img, qst, label, eta, network_optimizer):
     loss = self.model._loss(img, qst, label)
