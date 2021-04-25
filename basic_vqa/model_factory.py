@@ -2,7 +2,6 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 from models_lct import VqaModel as LctVqaModel
 from models import VqaModel
-from constants import ARCH_TYPE
 import config
 
 def get_ef_model( dataset ):

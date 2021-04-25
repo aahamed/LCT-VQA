@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 from pcdarts.model_search import Network
-from constants import *
+import config
 from torch.utils.data import WeightedRandomSampler
+from models import VqaModel as WModel, softXEnt
 
 class ImgEncoder(nn.Module):
 
@@ -125,7 +126,8 @@ class QstEncoder(nn.Module):
         hidden_state = image_embedding.view(1, -1, self.hidden_size )
 
         # create start tokens ( numerical value 2 )
-        start_word = torch.ones( (batch_size, 1) ).long().to( DEVICE ) * 2
+        start_word = torch.ones( (batch_size, 1) ).\
+                long().to( config.DEVICE ) * 2
         start_vec = self.word2vec( start_word )
         start_vec = self.tanh( start_vec )
         start_vec = start_vec.transpose(0, 1)
@@ -134,7 +136,7 @@ class QstEncoder(nn.Module):
         hidden_state = ( hidden_state, hidden_state )
         current_word = start_vec
         qst_out = torch.zeros( (batch_size, self.max_length) )\
-                .long().to( DEVICE )
+                .long().to( config.DEVICE )
         for t in range( self.max_length ):
             out, hidden_state = \
                     self.lstm( current_word, hidden_state )
@@ -158,7 +160,7 @@ class QstEncoder(nn.Module):
             pred = [ list(
                 WeightedRandomSampler(soft[i,0,:], 1)) \
                         for i in range(batch_size)]
-            pred = torch.tensor( pred ).to( DEVICE )
+            pred = torch.tensor( pred ).to( config.DEVICE )
         return pred
 
 
@@ -171,7 +173,7 @@ class VqaModel(nn.Module):
 
         super(VqaModel, self).__init__()
         self.img_encoder = None
-        if ARCH_TYPE == 'darts':
+        if config.ARCH_TYPE == 'darts':
             self.img_encoder = ImgEncoder(embed_size, self)
         else:
             self.img_encoder = ImgEncoderFixed(embed_size)
@@ -215,20 +217,20 @@ class VqaModel(nn.Module):
         images
         '''
         # import pdb; pdb.set_trace()
-        with torch.no_grad():
-            img_feature = self.img_encoder(img)
-            # generate question
-            qst = self.qst_encoder.generate(img_feature)
-            # encode generated questions
-            qst_feature, _ = self.qst_encoder(qst, img_feature)
-            # get answer for generated question
-            combined_feature = torch.mul(img_feature, qst_feature)  
-            combined_feature = self.tanh(combined_feature)
-            combined_feature = self.dropout(combined_feature)
-            combined_feature = self.fc1(combined_feature)           
-            combined_feature = self.tanh(combined_feature)
-            combined_feature = self.dropout(combined_feature)
-            answer = self.fc2(combined_feature)           
+        # with torch.no_grad():
+        img_feature = self.img_encoder(img)
+        # generate question
+        qst = self.qst_encoder.generate(img_feature)
+        # encode generated questions
+        qst_feature, _ = self.qst_encoder(qst, img_feature)
+        # get answer for generated question
+        combined_feature = torch.mul(img_feature, qst_feature)  
+        combined_feature = self.tanh(combined_feature)
+        combined_feature = self.dropout(combined_feature)
+        combined_feature = self.fc1(combined_feature)           
+        combined_feature = self.tanh(combined_feature)
+        combined_feature = self.dropout(combined_feature)
+        answer = self.fc2(combined_feature)           
 
         return qst, answer
 
@@ -255,13 +257,13 @@ class VqaModel(nn.Module):
                 self.word_embed_size, self.num_layers,
                 self.hidden_size )
         new_vqa_model.img_encoder.darts = new_darts
-        new_vqa_model.to( DEVICE )
+        new_vqa_model.to( config.DEVICE )
         return new_vqa_model
 
 def test_vqa():
-    global DEVICE, ARCH_TYPE
-    DEVICE = 'cpu'
-    ARCH_TYPE = 'darts'
+    # global config.DEVICE, config.ARCH_TYPE
+    config.DEVICE = 'cuda'
+    config.ARCH_TYPE = 'darts'
     print( 'Test VQA model' )
     embed_size = 512
     qst_vocab_size = 8192
@@ -272,18 +274,21 @@ def test_vqa():
     import pdb; pdb.set_trace()
     model = VqaModel( embed_size, qst_vocab_size,
             ans_vocab_size, word_embed_size,
-            num_layers, hidden_size )
+            num_layers, hidden_size ).to(config.DEVICE)
     batch_size = 4
     img_size = 64
     qst_max_len = 30
-    criterion = nn.CrossEntropyLoss()
-    img = torch.randn( batch_size, 3, img_size, img_size )
-    qst = torch.randint( qst_vocab_size, ( batch_size, qst_max_len) )
+    criterion = nn.CrossEntropyLoss().to(config.DEVICE)
+    img = torch.randn( batch_size, 3,
+            img_size, img_size ).to(config.DEVICE)
+    qst = torch.randint( qst_vocab_size,
+            ( batch_size, qst_max_len) ).to(config.DEVICE)
     # test forward pass
     out, qst_out = model( img, qst )
     assert out.shape == ( batch_size, ans_vocab_size )
     assert qst_out.shape == ( batch_size, qst_max_len, qst_vocab_size )
-    labels = torch.randint( ans_vocab_size, (batch_size, ) )
+    labels = torch.randint( ans_vocab_size,
+            (batch_size, ) ).to(config.DEVICE)
     # test architecture loss
     # loss = model.img_encoder.darts._loss( img, qst, labels )
     new_model = model.new()
@@ -303,6 +308,21 @@ def test_vqa():
     qst, ans = model.generate( img )
     assert ans.shape == ( batch_size, ans_vocab_size )
     assert qst.shape == ( batch_size, qst_max_len )
+    # test gradient prop for multi-step loss
+    w_model = WModel( embed_size, qst_vocab_size,
+            ans_vocab_size, word_embed_size,
+            num_layers, hidden_size ).to(config.DEVICE)
+    w_ans = w_model( img, qst )
+    # argmax not differentiable
+    # ans = torch.argmax( ans, 1 )
+    # w_loss = criterion( w_ans, ans )
+    w_loss = softXEnt( w_ans, ans )
+    # The generated qst are obtained via sampling
+    # and hence not differentiable. This means gradient
+    # will not flow back through the questions which means
+    # gradient for model.qst_encoder.fc2 will be None
+    grad_model = torch.autograd.grad( w_loss, model.parameters(),
+            allow_unused=True )
     print( 'Test passed!' )
 
 def test():

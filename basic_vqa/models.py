@@ -1,7 +1,13 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import torch.nn.functional as F
+import config
 
+def softXEnt( pred, target ):
+    '''Soft cross entropy loss'''
+    logprobs = F.log_softmax( pred, dim=1 )
+    return -( target * logprobs ).sum() / pred.shape[0]
 
 class ImgEncoder(nn.Module):
 
@@ -74,6 +80,14 @@ class VqaModel(nn.Module):
         self.fc1 = nn.Linear(embed_size, ans_vocab_size)
         self.fc2 = nn.Linear(ans_vocab_size, ans_vocab_size)
 
+        self.embed_size = embed_size
+        self.qst_vocab_size = qst_vocab_size
+        self.ans_vocab_size = ans_vocab_size
+        self.word_embed_size = word_embed_size
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.criterion = nn.CrossEntropyLoss()
+
     def forward(self, img, qst):
 
         # import pdb; pdb.set_trace()
@@ -88,3 +102,59 @@ class VqaModel(nn.Module):
         combined_feature = self.fc2(combined_feature)           # [batch_size, ans_vocab_size=1000]
 
         return combined_feature
+
+    def new(self):
+        new_model = VqaModel(self.embed_size, self.qst_vocab_size,
+                self.ans_vocab_size, self.word_embed_size, self.num_layers,
+                self.hidden_size)
+        new_model.to( config.DEVICE )
+        return new_model
+   
+    def _loss(self, images, questions, labels):
+        ans_out = self( images, questions )
+        loss = self.criterion( ans_out, labels )
+        return loss
+
+    def _soft_loss(self, images, questions, soft_labels):
+        ans_out = self( images, questions )
+        assert ans_out.shape == soft_labels.shape
+        loss = softXEnt( ans_out, soft_labels )
+        return loss
+
+def test():
+    # global config.DEVICE
+    config.DEVICE = 'cpu'
+    embed_size = 512
+    qst_vocab_size = 8192
+    ans_vocab_size = 1000
+    word_embed_size = 300
+    num_layers = 1
+    hidden_size = 512
+    import pdb; pdb.set_trace()
+    model = VqaModel( embed_size, qst_vocab_size,
+            ans_vocab_size, word_embed_size,
+            num_layers, hidden_size )
+    batch_size = 4
+    img_size = 64
+    qst_max_len = 30
+    criterion = nn.CrossEntropyLoss()
+    img = torch.randn( batch_size, 3, img_size, img_size )
+    qst = torch.randint( qst_vocab_size, ( batch_size, qst_max_len) )
+    # test forward pass
+    out = model( img, qst )
+    assert out.shape == ( batch_size, ans_vocab_size )
+    # test architecture loss
+    # loss = model.img_encoder.darts._loss( img, qst, labels )
+    labels = torch.randint( ans_vocab_size, (batch_size, ) )
+    soft_labels = torch.rand( batch_size, ans_vocab_size )
+    soft_labels = F.softmax( soft_labels, dim=1 )
+    new_model = model.new()
+    loss = new_model._loss( img, qst, labels )
+    soft_loss = new_model._soft_loss( img, qst, soft_labels )
+    print( 'Test passed!' )
+
+def main():
+    test()
+
+if __name__ == '__main__':
+    main()

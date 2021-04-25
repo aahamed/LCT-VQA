@@ -2,6 +2,8 @@
 config.py
 Holds configuration parameters for training
 '''
+import torch
+
 # input directory for visual question answering
 INPUT_DIR='../../data/vqa/inputs64'
 # maximum length of question. the length in the VQA dataset = 26
@@ -46,6 +48,16 @@ EXP_NAME='default_exp'
 RESUME=False
 # seed
 SEED=10
+# stats dir
+ROOT_STATS_DIR='./experiment_data'
+# device
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# options are 'fixed', 'darts'
+ARCH_TYPE = 'darts'
+# report frequence
+REPORT_FREQ= 10 if ARCH_TYPE == 'darts' else 100
+# skip stage 2
+SKIP_STAGE2 = False
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
