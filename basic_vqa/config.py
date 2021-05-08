@@ -36,6 +36,8 @@ ARCH_LEARNING_RATE=6e-4
 ARCH_WEIGHT_DECAY=1e-3
 # gradient clipping
 GRAD_CLIP=5
+# temperature for softmax
+TEMPERATURE=0.1
 # batch size
 BATCH_SIZE=64
 # number of epochs
@@ -55,15 +57,26 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # options are 'fixed', 'darts'
 ARCH_TYPE = 'darts'
 # report frequence
-REPORT_FREQ= 10 if ARCH_TYPE == 'darts' else 100
+REPORT_FREQ = 10 if ARCH_TYPE == 'darts' else 100
+# architecture update frequency
+ARCH_UPDATE_FREQ = 2000
+# architecture update frequency min
+ARCH_UPDATE_FREQ_MIN = 100
+# architecture update frequency decay
+GAMMA_ARCH = 0.5
 # skip stage 2
 SKIP_STAGE2 = False
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
-            EXP_NAME, RESUME
+            EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
+            SKIP_STAGE2
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
     EXP_NAME = args.exp
     RESUME = args.resume
+    NUM_WORKERS = args.num_workers
+    ARCH_TYPE = args.arch_type
+    SKIP_STAGE2 = args.skip_stage2
+    ARCH_UPDATE_FREQ = args.arch_update_freq

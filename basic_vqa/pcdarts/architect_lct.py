@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import config
+import logging
 from torch.autograd import Variable
 
 def _concat(xs):
@@ -50,7 +51,7 @@ class ArchitectLct(object):
                 self.ef_model, self.ef_model._loss)
         # generate pseudo qa dataset using unrolled_ef_model
         pseudo_qst, pseudo_ans = unrolled_ef_model.generate(img_train)
-        pseudo_ans = F.softmax(pseudo_ans, dim=1)
+        pseudo_ans = F.softmax(pseudo_ans / config.TEMPERATURE, dim=1)
         # unroll w_model with one step gd using pseudo qa data
         unrolled_w_model = self._compute_unrolled_model(img_train,
                 pseudo_qst, pseudo_ans, eta, self.w_optimizer,
@@ -65,7 +66,7 @@ class ArchitectLct(object):
         def qa_fn():
             # generate pseudo qa dataset using unrolled_ef_model
             pseudo_qst, pseudo_ans = unrolled_ef_model.generate(img_train)
-            pseudo_ans = F.softmax(pseudo_ans, dim=1)
+            pseudo_ans = F.softmax(pseudo_ans / config.TEMPERATURE, dim=1)
             return pseudo_qst, pseudo_ans
         kappa = self._hessian_vector_product(grad_wprime, img_train,
             qa_fn, self.w_model, 
@@ -84,6 +85,10 @@ class ArchitectLct(object):
             v.grad = Variable(g.data)
           else:
             v.grad.data.copy_(g.data)
+
+        # log unrolled loss
+        logging.info('| TRAIN SET | STAGE3 | W\'-Val-Loss: {:.4f}'
+                .format(unrolled_loss.item()))
 
     def _compute_unrolled_model(self, img, qst, label,
             eta, optimizer, model, loss_fn, exp_zero_grad=0,

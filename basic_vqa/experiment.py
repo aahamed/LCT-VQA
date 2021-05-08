@@ -24,7 +24,7 @@ def num_correct( pred, multi_choice ):
 class Experiment( object ):
 
     def __init__( self, args ):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # self.args = args
         self.name = config.EXP_NAME
         self.exp_dir = os.path.join( config.ROOT_STATS_DIR, self.name )
@@ -79,6 +79,7 @@ class Experiment( object ):
         # instantiate architect for architecture search
         self.architect = get_architect(self.ef_model, self.w_model,
                 self.ef_optimizer, self.w_optimizer)
+        self.arch_update_freq = config.ARCH_UPDATE_FREQ
 
         self.init_model()
 
@@ -123,16 +124,26 @@ class Experiment( object ):
         self.ef_model.to( config.DEVICE )
         self.w_model.to( config.DEVICE )
 
+    def set_arch_update_freq( self ):
+        self.arch_update_freq = int( 
+                config.ARCH_UPDATE_FREQ * ( 
+                    config.GAMMA_ARCH ** self.current_epoch ) )
+        self.arch_update_freq = max( self.arch_update_freq,
+                config.ARCH_UPDATE_FREQ_MIN )
+        self.log( f'architecture update freq: {self.arch_update_freq}' )
+
     def run( self ):
         for epoch in range( self.current_epoch, self.epochs ):
             self.log( f'Starting Epoch: {epoch+1}' )
             if config.ARCH_TYPE == 'darts':
                 self.log( f'genotype: {self.ef_model.genotype()}' )
             self.current_epoch = epoch
+            self.set_arch_update_freq()
             self.train()
             self.val()
             self.ef_scheduler.step()
-            self.w_scheduler.step()
+            if not config.SKIP_STAGE2:
+                self.w_scheduler.step()
             self.save_model()
             self.record_stats()
 
@@ -185,7 +196,8 @@ class Experiment( object ):
             label = batch_sample['answer_label'].to(config.DEVICE)
             multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
             
-            if config.ARCH_TYPE == 'darts' and ( batch_idx % 10 == 0 ):
+            if config.ARCH_TYPE == 'darts' and \
+                    ( batch_idx % self.arch_update_freq == 0 ):
                 # STAGE 3: Architecture Search
                 # Update architecture of E in encoder-decoder model 
                 # using validation data

@@ -124,9 +124,10 @@ class VqaModel(nn.Module):
 def test():
     # global config.DEVICE
     config.DEVICE = 'cpu'
+    temperature = config.TEMPERATURE
     embed_size = 512
     qst_vocab_size = 8192
-    ans_vocab_size = 1000
+    ans_vocab_size = 10
     word_embed_size = 300
     num_layers = 1
     hidden_size = 512
@@ -147,7 +148,7 @@ def test():
     # loss = model.img_encoder.darts._loss( img, qst, labels )
     labels = torch.randint( ans_vocab_size, (batch_size, ) )
     soft_labels = torch.rand( batch_size, ans_vocab_size )
-    soft_labels = F.softmax( soft_labels, dim=1 )
+    soft_labels = F.softmax( soft_labels / temperature, dim=1 )
     new_model = model.new()
     loss = new_model._loss( img, qst, labels )
     soft_loss = new_model._soft_loss( img, qst, soft_labels )
