@@ -70,7 +70,7 @@ SKIP_STAGE2 = False
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
-            SKIP_STAGE2
+            SKIP_STAGE2, ARCH_UPDATE_FREQ
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
