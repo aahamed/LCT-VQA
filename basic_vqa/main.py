@@ -30,8 +30,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=4,
                         help='number of processes working on cpu.')
 
-    parser.add_argument('--arch_type', type=str, default='fixed',
-                        help='architecture type. Options: [ fixed, darts ]')
+    parser.add_argument('--arch_type', type=str, default='fixed-vgg',
+                        help='architecture type. Options: [ fixed-vgg, fixed-darts, darts ]')
     
     parser.add_argument('--arch_update_freq', type=int, default=1000,
                         help='architecture update frequency ( default: 1000 )')
@@ -41,6 +41,12 @@ if __name__ == '__main__':
     
     parser.add_argument('--no_pretrain_enc', action='store_true',
                         help='Don\'t use a pretrained encoder')
+    
+    parser.add_argument('--darts_model_path', type=str, default='./pretrain/imagenet_model.pt',
+                        help='path to pretrained darts model ( debugging )')
+    
+    parser.add_argument('--input_dir', type=str, default='../../data/vqa/inputs64',
+                        help='input directory containing vqa data')
     
     args = parser.parse_args()
 

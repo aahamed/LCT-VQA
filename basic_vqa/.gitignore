@@ -5,3 +5,4 @@ models/*
 experiment_data/*
 *.bak
 ignore/*
+pretrain/*.pt

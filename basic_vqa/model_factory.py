@@ -1,7 +1,7 @@
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from models_lct import VqaModel as LctVqaModel
-from models import VqaModel
+from models_base import VqaModel as BaseVqaModel
 import config
 
 def get_ef_model( dataset ):
@@ -29,7 +29,7 @@ def get_ef_scheduler( optimizer ):
 def get_w_model( dataset ):
     qst_vocab_size = dataset.qst_vocab.vocab_size
     ans_vocab_size = dataset.ans_vocab.vocab_size
-    model = VqaModel(
+    model = BaseVqaModel(
         embed_size=config.IMG_EMBED_SIZE,
         qst_vocab_size=qst_vocab_size,
         ans_vocab_size=ans_vocab_size,

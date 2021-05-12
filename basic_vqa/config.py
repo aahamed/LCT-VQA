@@ -54,10 +54,10 @@ SEED=10
 ROOT_STATS_DIR='./experiment_data'
 # device
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# options are 'fixed', 'darts'
-ARCH_TYPE = 'darts'
+# options are 'fixed-vgg', 'fixed-darts', 'pcdarts'
+ARCH_TYPE = 'pcdarts'
 # report frequence
-REPORT_FREQ = 10 if ARCH_TYPE == 'darts' else 100
+REPORT_FREQ = 10 if ARCH_TYPE == 'pcdarts' else 100
 # architecture update frequency
 ARCH_UPDATE_FREQ = 2000
 # architecture update frequency min
@@ -68,12 +68,14 @@ GAMMA_ARCH = 0.5
 SKIP_STAGE2 = False
 # flag to use pretrained img encoder
 PRETRAIN_ENC = True
+# path to pretrained darts model
+DARTS_MODEL_PATH = './pretrain/imagenet_model.pt'
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
             SKIP_STAGE2, ARCH_UPDATE_FREQ, PRETRAIN_ENC, \
-            REPORT_FREQ
+            REPORT_FREQ, DARTS_MODEL_PATH, INPUT_DIR
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
@@ -84,4 +86,6 @@ def update_config( args ):
     SKIP_STAGE2 = args.skip_stage2
     ARCH_UPDATE_FREQ = args.arch_update_freq
     PRETRAIN_ENC = not args.no_pretrain_enc
-    REPORT_FREQ = 10 if ARCH_TYPE == 'darts' else 100
+    REPORT_FREQ = 10 if ARCH_TYPE == 'pcdarts' else 100
+    DARTS_MODEL_PATH = args.darts_model_path
+    INPUT_DIR = args.input_dir

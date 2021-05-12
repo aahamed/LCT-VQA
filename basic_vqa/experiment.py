@@ -14,7 +14,7 @@ from architect_factory import get_architect
 from itertools import cycle
 from file_utils import *
 from plot import plot_loss_acc
-from models import softXEnt
+from models_base import softXEnt
 
 def num_correct( pred, multi_choice ):
         res = torch.stack([(ans == pred) for ans in multi_choice])
@@ -24,7 +24,7 @@ def num_correct( pred, multi_choice ):
 class Experiment( object ):
 
     def __init__( self, args ):
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         # self.args = args
         self.name = config.EXP_NAME
         self.exp_dir = os.path.join( config.ROOT_STATS_DIR, self.name )
@@ -135,7 +135,7 @@ class Experiment( object ):
     def run( self ):
         for epoch in range( self.current_epoch, self.epochs ):
             self.log( f'Starting Epoch: {epoch+1}' )
-            if config.ARCH_TYPE == 'darts':
+            if config.ARCH_TYPE == 'pcdarts':
                 self.log( f'genotype: {self.ef_model.genotype()}' )
             self.current_epoch = epoch
             self.set_arch_update_freq()
@@ -196,7 +196,7 @@ class Experiment( object ):
             label = batch_sample['answer_label'].to(config.DEVICE)
             multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
             
-            if config.ARCH_TYPE == 'darts' and \
+            if config.ARCH_TYPE == 'pcdarts' and \
                     ( batch_idx % self.arch_update_freq == 0 ):
                 # STAGE 3: Architecture Search
                 # Update architecture of E in encoder-decoder model 

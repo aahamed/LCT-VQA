@@ -4,7 +4,9 @@ import torchvision.models as models
 from pcdarts.model_search import Network
 import config
 from torch.utils.data import WeightedRandomSampler
-from models import VqaModel as WModel, softXEnt
+from models_base import VqaModel as WModel, softXEnt
+from darts.model import NetworkImageNet
+from darts.genotypes import DARTS as gtDarts
 
 class ImgEncoder(nn.Module):
 
@@ -41,10 +43,27 @@ class ImgEncoderFixed(nn.Module):
            (3) Normalize feature vector.
         """
         super(ImgEncoderFixed, self).__init__()
-        model = models.vgg19(pretrained=pretrained)
-        in_features = model.classifier[-1].in_features  # input size of feature vector
-        model.classifier = nn.Sequential(
-            *list(model.classifier.children())[:-1])    # remove last fc layer
+        # import pdb; pdb.set_trace()
+        if config.ARCH_TYPE == 'fixed-vgg':
+            model = models.vgg19(pretrained=pretrained)
+            in_features = model.classifier[-1].in_features  # input size of feature vector
+            model.classifier = nn.Sequential(
+                *list(model.classifier.children())[:-1])    # remove last fc layer
+        elif config.ARCH_TYPE == 'fixed-darts':
+            init_channels = 48
+            classes = 1000
+            layers = 14
+            auxiliary = True
+            genotype = gtDarts
+            model = NetworkImageNet(init_channels, classes, layers,
+                    auxiliary, genotype)
+            in_features = ( model.output_size ** 2 ) * model.output_ch
+            if pretrained:
+                state = torch.load( config.DARTS_MODEL_PATH,
+                        map_location=config.DEVICE )
+                model.load_state_dict( state['state_dict'] )
+        else:
+            assert False and f'Unrecognized arch_type: {config.ARCH_TYPE}'
 
         self.model = model                              # loaded model without last fc layer
         self.fc = nn.Linear(in_features, embed_size)    # feature vector of image
@@ -53,7 +72,6 @@ class ImgEncoderFixed(nn.Module):
     def forward(self, image):
         """Extract feature vector from image vector.
         """
-        # import pdb; pdb.set_trace()
         if self.pretrained:
             with torch.no_grad():
                 img_feature = self.model(image)                  # [batch_size, vgg16(19)_fc=4096]
@@ -177,7 +195,7 @@ class VqaModel(nn.Module):
 
         super(VqaModel, self).__init__()
         self.img_encoder = None
-        if config.ARCH_TYPE == 'darts':
+        if config.ARCH_TYPE == 'pcdarts':
             self.img_encoder = ImgEncoder(embed_size, self)
         else:
             self.img_encoder = ImgEncoderFixed(embed_size, pretrained)
@@ -267,7 +285,7 @@ class VqaModel(nn.Module):
 def test_vqa():
     # global config.DEVICE, config.ARCH_TYPE
     config.DEVICE = 'cuda'
-    config.ARCH_TYPE = 'darts'
+    config.ARCH_TYPE = 'pcdarts'
     print( 'Test VQA model' )
     embed_size = 512
     qst_vocab_size = 8192
@@ -278,7 +296,7 @@ def test_vqa():
     import pdb; pdb.set_trace()
     model = VqaModel( embed_size, qst_vocab_size,
             ans_vocab_size, word_embed_size,
-            num_layers, hidden_size, pretrained ).to(config.DEVICE)
+            num_layers, hidden_size ).to(config.DEVICE)
     batch_size = 4
     img_size = 64
     qst_max_len = 30
@@ -331,7 +349,7 @@ def test_vqa():
 
 def test_vqa_fixed():
     config.DEVICE = 'cuda'
-    config.ARCH_TYPE = 'fixed'
+    config.ARCH_TYPE = 'fixed-darts'
     print( 'Test VQA model with fixed encoder' )
     embed_size = 512
     qst_vocab_size = 8192
@@ -339,13 +357,13 @@ def test_vqa_fixed():
     word_embed_size = 300
     num_layers = 1
     hidden_size = 512
-    pretrained = False
+    pretrained = True
     import pdb; pdb.set_trace()
     model = VqaModel( embed_size, qst_vocab_size,
             ans_vocab_size, word_embed_size,
             num_layers, hidden_size, pretrained ).to(config.DEVICE)
     batch_size = 4
-    img_size = 64
+    img_size = 224
     qst_max_len = 30
     criterion = nn.CrossEntropyLoss().to(config.DEVICE)
     img = torch.randn( batch_size, 3,
