@@ -13,7 +13,8 @@ def get_ef_model( dataset ):
         ans_vocab_size=ans_vocab_size,
         word_embed_size=config.WORD_EMBED_SIZE,
         num_layers=config.LSTM_NUM_LAYERS,
-        hidden_size=config.LSTM_HIDDEN_SIZE)
+        hidden_size=config.LSTM_HIDDEN_SIZE,
+        pretrained=config.PRETRAIN_ENC)
     return model
 
 def get_ef_optimizer( model ):

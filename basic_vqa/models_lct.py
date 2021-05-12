@@ -8,7 +8,7 @@ from models import VqaModel as WModel, softXEnt
 
 class ImgEncoder(nn.Module):
 
-    def __init__(self, embed_size, vqa_model, init_ch=16, layers=4 ):
+    def __init__(self, embed_size, vqa_model, init_ch=16, layers=4):
         """
         Image Encoder using PC-DARTS
         """
@@ -32,7 +32,7 @@ class ImgEncoder(nn.Module):
 
 class ImgEncoderFixed(nn.Module):
 
-    def __init__(self, embed_size):
+    def __init__(self, embed_size, pretrained=True):
         """(1) Load the pretrained model as you want.
                cf) one needs to check structure of model using 'print(model)'
                    to remove last fc layer from the model.
@@ -41,20 +41,24 @@ class ImgEncoderFixed(nn.Module):
            (3) Normalize feature vector.
         """
         super(ImgEncoderFixed, self).__init__()
-        model = models.vgg19(pretrained=True)
+        model = models.vgg19(pretrained=pretrained)
         in_features = model.classifier[-1].in_features  # input size of feature vector
         model.classifier = nn.Sequential(
             *list(model.classifier.children())[:-1])    # remove last fc layer
 
         self.model = model                              # loaded model without last fc layer
         self.fc = nn.Linear(in_features, embed_size)    # feature vector of image
+        self.pretrained = pretrained
 
     def forward(self, image):
         """Extract feature vector from image vector.
         """
         # import pdb; pdb.set_trace()
-        with torch.no_grad():
-            img_feature = self.model(image)                  # [batch_size, vgg16(19)_fc=4096]
+        if self.pretrained:
+            with torch.no_grad():
+                img_feature = self.model(image)                  # [batch_size, vgg16(19)_fc=4096]
+        else:
+            img_feature = self.model( image )
         img_feature = self.fc(img_feature)                   # [batch_size, embed_size]
 
         l2_norm = img_feature.norm(p=2, dim=1, keepdim=True).detach()
@@ -169,14 +173,14 @@ class VqaModel(nn.Module):
 
     def __init__(self, embed_size, qst_vocab_size,
             ans_vocab_size, word_embed_size, num_layers,
-            hidden_size):
+            hidden_size, pretrained=True):
 
         super(VqaModel, self).__init__()
         self.img_encoder = None
         if config.ARCH_TYPE == 'darts':
             self.img_encoder = ImgEncoder(embed_size, self)
         else:
-            self.img_encoder = ImgEncoderFixed(embed_size)
+            self.img_encoder = ImgEncoderFixed(embed_size, pretrained)
         self.qst_encoder = QstEncoder(qst_vocab_size, word_embed_size,
                 embed_size, num_layers, hidden_size)
         self.tanh = nn.Tanh()
@@ -274,7 +278,7 @@ def test_vqa():
     import pdb; pdb.set_trace()
     model = VqaModel( embed_size, qst_vocab_size,
             ans_vocab_size, word_embed_size,
-            num_layers, hidden_size ).to(config.DEVICE)
+            num_layers, hidden_size, pretrained ).to(config.DEVICE)
     batch_size = 4
     img_size = 64
     qst_max_len = 30
@@ -325,7 +329,45 @@ def test_vqa():
             allow_unused=True )
     print( 'Test passed!' )
 
+def test_vqa_fixed():
+    config.DEVICE = 'cuda'
+    config.ARCH_TYPE = 'fixed'
+    print( 'Test VQA model with fixed encoder' )
+    embed_size = 512
+    qst_vocab_size = 8192
+    ans_vocab_size = 1000
+    word_embed_size = 300
+    num_layers = 1
+    hidden_size = 512
+    pretrained = False
+    import pdb; pdb.set_trace()
+    model = VqaModel( embed_size, qst_vocab_size,
+            ans_vocab_size, word_embed_size,
+            num_layers, hidden_size, pretrained ).to(config.DEVICE)
+    batch_size = 4
+    img_size = 64
+    qst_max_len = 30
+    criterion = nn.CrossEntropyLoss().to(config.DEVICE)
+    img = torch.randn( batch_size, 3,
+            img_size, img_size ).to(config.DEVICE)
+    qst = torch.randint( qst_vocab_size,
+            ( batch_size, qst_max_len) ).to(config.DEVICE)
+    # test forward pass
+    out, qst_out = model( img, qst )
+    assert out.shape == ( batch_size, ans_vocab_size )
+    assert qst_out.shape == ( batch_size, qst_max_len, qst_vocab_size )
+    labels = torch.randint( ans_vocab_size,
+            (batch_size, ) ).to(config.DEVICE)
+    loss = model._loss( img, qst, labels )
+    loss.backward()
+    cnt = 0
+    for param in model.img_encoder.parameters():
+        if param.grad is None:
+            cnt += 1
+    print( 'cnt:', cnt )
+
 def test():
+    test_vqa_fixed()
     test_vqa()
 
 def main():

@@ -39,6 +39,9 @@ if __name__ == '__main__':
     parser.add_argument('--skip_stage2', action='store_true',
                         help='Skip Stage2 of algorithm')
     
+    parser.add_argument('--no_pretrain_enc', action='store_true',
+                        help='Don\'t use a pretrained encoder')
+    
     args = parser.parse_args()
 
     main(args)
