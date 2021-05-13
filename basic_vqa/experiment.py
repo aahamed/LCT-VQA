@@ -85,6 +85,7 @@ class Experiment( object ):
 
         self.load_experiment()
         self.log( f'seed is: {seed}' )
+        self.log( f'args: {args}' )
 
     
     def setup_logger( self ):

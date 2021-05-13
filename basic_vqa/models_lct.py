@@ -13,8 +13,9 @@ class ImgEncoder(nn.Module):
         Image Encoder using PC-DARTS
         """
         super(ImgEncoder, self).__init__()
-        # import pdb; pdb.set_trace()
         self.darts = Network( init_ch, embed_size, layers, vqa_model )
+        in_features = self.darts.output_ch * ( self.darts.output_size ** 2 )
+        self.fc = nn.Linear(in_features, embed_size)
 
 
     def forward(self, image):
@@ -23,6 +24,7 @@ class ImgEncoder(nn.Module):
         # import pdb; pdb.set_trace()
         # image has dimensions [ batch_size, 3, 224, 224 ]
         img_feature = self.darts( image )
+        img_feature = self.fc( img_feature )
         # img_feature has dimensions [ batch_size, embed_size ]
         l2_norm = img_feature.norm(p=2, dim=1, keepdim=True).detach()
         # l2 normalized feature vector
@@ -278,7 +280,7 @@ def test_vqa():
     import pdb; pdb.set_trace()
     model = VqaModel( embed_size, qst_vocab_size,
             ans_vocab_size, word_embed_size,
-            num_layers, hidden_size, pretrained ).to(config.DEVICE)
+            num_layers, hidden_size ).to(config.DEVICE)
     batch_size = 4
     img_size = 64
     qst_max_len = 30

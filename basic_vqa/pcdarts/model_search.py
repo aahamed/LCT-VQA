@@ -102,7 +102,8 @@ class Network(nn.Module):
     self._criterion = nn.CrossEntropyLoss()
     # note vqa_model is a circular reference
     # it should not cause issues though
-    self._vqa_model = weakref.ref( vqa_model )
+    if vqa_model:
+        self._vqa_model = weakref.ref( vqa_model )
     self._steps = steps
     self._multiplier = multiplier
 
@@ -126,8 +127,12 @@ class Network(nn.Module):
       self.cells += [cell]
       C_prev_prev, C_prev = C_prev, multiplier*C_curr
 
-    self.global_pooling = nn.AdaptiveAvgPool2d(1)
-    self.classifier = nn.Linear(C_prev, num_classes)
+    self.global_pooling = nn.AdaptiveAvgPool2d(7)
+    self.output_ch = 256
+    self.output_size = 7
+
+    # unused
+    # self.classifier = nn.Linear(C_prev, num_classes)
 
     self._initialize_alphas()
 
@@ -139,6 +144,7 @@ class Network(nn.Module):
     return model_new
 
   def forward(self, input):
+    # import pdb; pdb.set_trace()
     # N is batch_size, H is height of image, W is width of image
     N, _, H, W = input.shape
     # expand input to 3 channels ( this is for mnist images )
@@ -169,8 +175,9 @@ class Network(nn.Module):
           weights2 = torch.cat([weights2,tw2],dim=0)
       s0, s1 = s1, cell(s0, s1, weights,weights2)
     out = self.global_pooling(s1)
-    logits = self.classifier(out.view(out.size(0),-1))
-    return logits
+    # logits = self.classifier(out.view(out.size(0),-1))
+    out = out.flatten( start_dim=1 )
+    return out
 
   def _loss(self, images, questions, labels):
     logits, _ = self._vqa_model()( images, questions )
@@ -242,3 +249,20 @@ class Network(nn.Module):
     )
     return genotype
 
+def test():
+    init_channels = 16
+    classes = 10
+    layers = 4
+    vqa_model = nn.Linear(1,1)
+    model = Network(init_channels, classes, layers, vqa_model).cuda()
+    batch_size = 4
+    img_size = 64
+    img = torch.randn(batch_size, 3, img_size, img_size).cuda()
+    out = model( img )
+    assert out.shape == ( batch_size, model.output_ch *
+            model.output_size * model.output_size  )
+    print( 'Test passed!' )
+
+
+if __name__ == '__main__':
+    test()
