@@ -70,12 +70,15 @@ SKIP_STAGE2 = False
 PRETRAIN_ENC = True
 # path to pretrained darts model
 DARTS_MODEL_PATH = './pretrain/imagenet_model.pt'
+# flag to control use of img encoder
+NO_IMG_ENC = False
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
             SKIP_STAGE2, ARCH_UPDATE_FREQ, PRETRAIN_ENC, \
-            REPORT_FREQ, DARTS_MODEL_PATH, INPUT_DIR
+            REPORT_FREQ, DARTS_MODEL_PATH, INPUT_DIR, \
+            NO_IMG_ENC
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
@@ -89,3 +92,4 @@ def update_config( args ):
     REPORT_FREQ = 10 if ARCH_TYPE == 'pcdarts' else 100
     DARTS_MODEL_PATH = args.darts_model_path
     INPUT_DIR = args.input_dir
+    NO_IMG_ENC = args.no_img_enc

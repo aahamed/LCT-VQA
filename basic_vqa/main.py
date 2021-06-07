@@ -42,6 +42,9 @@ if __name__ == '__main__':
     parser.add_argument('--no_pretrain_enc', action='store_true',
                         help='Don\'t use a pretrained encoder')
     
+    parser.add_argument('--no_img_enc', action='store_true',
+                        help='Don\'t use an image encoder')
+    
     parser.add_argument('--darts_model_path', type=str, default='./pretrain/imagenet_model.pt',
                         help='path to pretrained darts model ( debugging )')
     
