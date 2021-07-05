@@ -72,13 +72,15 @@ PRETRAIN_ENC = True
 DARTS_MODEL_PATH = './pretrain/imagenet_model.pt'
 # flag to control use of img encoder
 NO_IMG_ENC = False
+# flag to only train question generation
+QST_ONLY = False
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
             SKIP_STAGE2, ARCH_UPDATE_FREQ, PRETRAIN_ENC, \
             REPORT_FREQ, DARTS_MODEL_PATH, INPUT_DIR, \
-            NO_IMG_ENC
+            NO_IMG_ENC, QST_ONLY
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
@@ -93,3 +95,4 @@ def update_config( args ):
     DARTS_MODEL_PATH = args.darts_model_path
     INPUT_DIR = args.input_dir
     NO_IMG_ENC = args.no_img_enc
+    QST_ONLY = args.qst_only

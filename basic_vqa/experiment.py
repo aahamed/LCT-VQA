@@ -17,9 +17,26 @@ from plot import plot_loss_acc
 from models_base import softXEnt
 
 def num_correct( pred, multi_choice ):
-        res = torch.stack([(ans == pred) for ans in multi_choice])
-        res = res.any(dim=0).sum().item()
-        return res
+    '''
+    Number of correct answers
+    '''
+    res = torch.stack([(ans == pred) for ans in multi_choice])
+    res = res.any(dim=0).sum().item()
+    return res
+
+def num_correct_qst( qst_pred, qst ):
+    '''
+    Number of correct questions
+    '''
+    qst_pred = qst_pred.argmax( dim=2 )[:, :-1]
+    qst = qst[:, 1:]
+    not_match = ~( qst == qst_pred )
+    err_cnt = not_match.sum( dim=1 )
+    acc_0 = ( err_cnt == 0 ).sum().item()
+    acc_3 = ( err_cnt <= 3 ).sum().item()
+    acc_5 = ( err_cnt <= 5 ).sum().item()
+    return acc_0, acc_3, acc_5
+
 
 class Experiment( object ):
 
@@ -182,6 +199,9 @@ class Experiment( object ):
         ef_corr_2 = 0
         w_loss = 0
         w_corr = 0
+        q_acc_0 = 0
+        q_acc_3 = 0
+        q_acc_5 = 0
         dataset = self.data_loader['train'].dataset
         N = len(dataset)
         batch_step_size = len( self.data_loader['train'] )
@@ -218,9 +238,12 @@ class Experiment( object ):
             _, ef_pred2 = torch.max(ans_out, 1)
             ans_loss = self.criterion(ans_out, label)
             qst = question[:, 1:].flatten()
-            qst_out = qst_out[:, :-1].flatten(end_dim=1)
-            qst_loss = self.criterion(qst_out, qst)
-            loss = ans_loss + qst_loss
+            qst_out_2 = qst_out[:, :-1].flatten(end_dim=1)
+            qst_loss = self.criterion(qst_out_2, qst)
+            if config.QST_ONLY:
+                loss = qst_loss
+            else:
+                loss = ans_loss + qst_loss
             loss.backward()
             nn.utils.clip_grad_norm_(self.ef_model.parameters(), config.GRAD_CLIP)
             self.ef_optimizer.step()
@@ -232,6 +255,10 @@ class Experiment( object ):
             ef_loss += loss.item()
             ef_corr_1 += num_correct( ef_pred1.cpu(), multi_choice )
             ef_corr_2 += num_correct( ef_pred2.cpu(), multi_choice )
+            a0, a3 , a5 = num_correct_qst( qst_out, question )
+            q_acc_0 += a0
+            q_acc_3 += a3
+            q_acc_5 += a5
             if batch_idx % config.REPORT_FREQ == 0:
                 self.log( ('| TRAIN SET | STAGE1 | Epoch [{:02d}/{:02d}], ' + 
                         'Step [{:04d}/{:04d}], EF-Loss: {:.4f}')
@@ -265,6 +292,9 @@ class Experiment( object ):
         ef_loss = ef_loss / batch_step_size
         ef_acc_1 = ef_corr_1 / N
         ef_acc_2 = ef_corr_2 / N
+        q_acc_0 = q_acc_0 / N
+        q_acc_3 = q_acc_3 / N
+        q_acc_5 = q_acc_5 / N
         w_loss = w_loss / batch_step_size
         w_acc = w_corr / N
         self.train_ef_loss.append( ef_loss )
@@ -276,7 +306,8 @@ class Experiment( object ):
                 f'{self.epochs:02d}], EF-Loss: {ef_loss:.4f} ' + 
                 f'EF-Acc: {ef_acc_2:.4f}, ' +
                 f'W-Loss: {w_loss:.4f}, ' +
-                f'W-Acc: {w_acc:.4f}' )
+                f'W-Acc: {w_acc:.4f}, ' +
+                f'Q-Acc: 0:{q_acc_0:.4f} 3:{q_acc_3:.4f}, 5:{q_acc_5:.4f}')
 
         self.evaluate_gen_qst( batch_sample )
             
