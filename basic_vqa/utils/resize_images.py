@@ -42,10 +42,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--input_dir', type=str, default='/run/media/hoosiki/WareHouse3/mtb/datasets/VQA/Images',
+    parser.add_argument('--input_dir', type=str, default='../../../data/vqa/Images',
                         help='directory for input images (unresized images)')
 
-    parser.add_argument('--output_dir', type=str, default='/run/media/hoosiki/WareHouse3/mtb/datasets/VQA/Resized_Images',
+    parser.add_argument('--output_dir', type=str, default='../../../data/vqa/ResizedImages224',
                         help='directory for output images (resized images)')
 
     parser.add_argument('--image_size', type=int, default=224,

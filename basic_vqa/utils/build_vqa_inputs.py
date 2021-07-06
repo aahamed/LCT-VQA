@@ -61,7 +61,7 @@ def vqa_processing(image_dir, annotation_file, question_file, valid_answer_set, 
 
 def main(args):
     
-    image_dir = args.input_dir+'/Resized_Images64/%s/'
+    image_dir = args.image_dir+'/%s/'
     annotation_file = args.input_dir+'/Annotations/v2_mscoco_%s_annotations.json'
     question_file = args.input_dir+'/Questions/v2_OpenEnded_mscoco_%s_questions.json'
 
@@ -85,10 +85,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--input_dir', type=str, default='/run/media/hoosiki/WareHouse3/mtb/datasets/VQA',
+    parser.add_argument('--input_dir', type=str, default='../../../data/vqa/',
                         help='directory for inputs')
+    
+    parser.add_argument('--image_dir', type=str, default='../../../data/vqa/Resized_Images224',
+                        help='directory for resized images')
 
-    parser.add_argument('--output_dir', type=str, default='../datasets',
+    parser.add_argument('--output_dir', type=str, default='../../../data/vqa/inputs224',
                         help='directory for outputs')
     
     args = parser.parse_args()

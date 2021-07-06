@@ -66,15 +66,18 @@ def make_vocab_answers(input_dir, n_answers):
 
 def main(args):
     input_dir = args.input_dir
+    output_dir = args.output_dir
     n_answers = args.n_answers
-    make_vocab_questions(input_dir+'/Questions')
-    make_vocab_answers(input_dir+'/Annotations', n_answers)
+    make_vocab_questions(output_dir+'/Questions')
+    make_vocab_answers(output_dir+'/Annotations', n_answers)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_dir', type=str, default='/run/media/hoosiki/WareHouse3/mtb/datasets/VQA',
+    parser.add_argument('--input_dir', type=str, default='../../../data/vqa/',
                         help='directory for input questions and answers')
+    parser.add_argument('--output_dir', type=str, default='../../../data/vqa',
+                        help='directory for output questions and answers')
     parser.add_argument('--n_answers', type=int, default=1000,
                         help='the number of answers to be kept in vocab')
     args = parser.parse_args()
