@@ -34,7 +34,7 @@ wget -O ${QUESTIONS_DIR}/v2_Questions_Val_mscoco.zip "https://s3.amazonaws.com/c
 wget -O ${QUESTIONS_DIR}/v2_Questions_Test_mscoco.zip "https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Test_mscoco.zip"
 
 # VQA Input Images (COCO)
-# wget -O ${IMAGES_DIR}/train2014.zip "http://images.cocodataset.org/zips/train2014.zip"
+wget -O ${IMAGES_DIR}/train2014.zip "http://images.cocodataset.org/zips/train2014.zip"
 wget -O ${IMAGES_DIR}/val2014.zip "http://images.cocodataset.org/zips/val2014.zip"
 wget -O ${IMAGES_DIR}/test2015.zip "http://images.cocodataset.org/zips/test2015.zip"
 
