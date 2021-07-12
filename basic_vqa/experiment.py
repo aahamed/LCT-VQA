@@ -15,6 +15,8 @@ from itertools import cycle
 from file_utils import *
 from plot import plot_loss_acc
 from models import softXEnt
+from misc import num_correct, VqaStruct, \
+    calc_bleu_scores
 
 def num_correct( pred, multi_choice ):
         res = torch.stack([(ans == pred) for ans in multi_choice])
@@ -50,6 +52,8 @@ class Experiment( object ):
                 dataset.dataset.qst_vocab
         self.ans_vocab = self.data_loader['train'].\
                 dataset.dataset.ans_vocab
+        self.vqa_struct = VqaStruct( config.INPUT_DIR,
+                data_file='valid.npy' ) 
 
         # setup experiment params
         self.epochs = config.NUM_EPOCHS
@@ -147,6 +151,7 @@ class Experiment( object ):
                 self.w_scheduler.step()
             self.save_model()
             self.record_stats()
+        self.val()
 
     def evaluate_gen_qst( self, batch_sample ):
         self.ef_model.eval()
@@ -287,6 +292,7 @@ class Experiment( object ):
         running_loss = 0
         ef_corr_1 = 0
         ef_corr_2 = 0
+        total_b4 = 0
         dataset = self.data_loader['valid'].dataset
         N = len(dataset)
         batch_step_size = len( self.data_loader['valid'] )
@@ -299,6 +305,7 @@ class Experiment( object ):
                 question = batch_sample['question'].to(config.DEVICE)
                 label = batch_sample['answer_label'].to(config.DEVICE)
                 multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
+                image_name = batch_sample['image_name']
                 
                 # get validation loss
                 output, _ = self.ef_model(image, question) # [batch_size, ans_vocab_size=1000]
@@ -313,15 +320,25 @@ class Experiment( object ):
                 running_loss += loss.item()
                 ef_corr_1 += num_correct( ef_pred1.cpu(), multi_choice )
                 ef_corr_2 += num_correct( ef_pred2.cpu(), multi_choice )
+                
+                # bleu score
+                pred_qst, pred_ans = self.ef_model.generate( image )
+                b4 = calc_bleu_scores( image_name, pred_qst,
+                    self.qst_vocab, self.vqa_struct )
+                total_b4 += b4
+
                 # print minibatch stats
                 if batch_idx % 100 == 0:
                     self.log( ('| VALID SET | Epoch [{:02d}/{:02d}], ' + 
-                            'Step [{:04d}/{:04d}], Loss: {:.4f}')
+                            'Step [{:04d}/{:04d}], Loss: {:.4f} ' + 
+                            'BLEU4: {:.4f}')
                               .format(self.current_epoch+1, self.epochs,
-                                  batch_idx, int(batch_step_size), loss.item()))
+                                  batch_idx, int(batch_step_size), loss.item(),
+                                  b4))
         
         # Print the average loss and accuracy in an epoch.
         ef_loss = running_loss / batch_step_size
+        avg_b4 = total_b4 / batch_step_size
         ef_acc_1 = ef_corr_1 / N
         ef_acc_2 = ef_corr_2 / N
         self.val_ef_loss.append( ef_loss )
@@ -330,7 +347,8 @@ class Experiment( object ):
         self.log( f'| VALID SET | Epoch [{self.current_epoch+1:02d}/' + 
                 f'{self.epochs:02d}], Loss: {ef_loss:.4f} ' + 
                 f'Acc(Exp1): {ef_acc_1:.4f}, ' +
-                f'Acc(Exp2): {ef_acc_2:.4f}' )
+                f'Acc(Exp2): {ef_acc_2:.4f} ' +
+                f'BLEU4: {avg_b4:.4f}')
 
     def log( self, log_str ):
         logging.info( log_str )
@@ -344,10 +362,10 @@ class Experiment( object ):
         self.val_ef_loss = read_file_in_dir( self.exp_dir, fname )
         fname = 'val_ef_acc.txt'
         self.val_ef_acc = read_file_in_dir( self.exp_dir, fname )
-        fname = 'train_w_loss.txt'
-        self.train_w_loss = read_file_in_dir( self.exp_dir, fname )
-        fname = 'train_w_acc.txt'
-        self.train_w_acc = read_file_in_dir( self.exp_dir, fname )
+        #fname = 'train_w_loss.txt'
+        #self.train_w_loss = read_file_in_dir( self.exp_dir, fname )
+        #fname = 'train_w_acc.txt'
+        #self.train_w_acc = read_file_in_dir( self.exp_dir, fname )
 
     def record_stats( self ):
         fname = 'train_ef_loss.txt'
@@ -402,9 +420,9 @@ class Experiment( object ):
         self.ef_model.load_state_dict( state_dict['ef_model'] )
         self.ef_optimizer.load_state_dict( state_dict['ef_opt'] )
         self.ef_scheduler.load_state_dict( state_dict['ef_sched'] )
-        load_path = os.path.join( self.exp_dir, 'w_model.pt' )
-        state_dict = torch.load( load_path )
-        self.w_model.load_state_dict( state_dict['w_model'] )
-        self.w_optimizer.load_state_dict( state_dict['w_opt'] )
-        self.w_scheduler.load_state_dict( state_dict['w_sched'] )
+        #load_path = os.path.join( self.exp_dir, 'w_model.pt' )
+        #state_dict = torch.load( load_path )
+        #self.w_model.load_state_dict( state_dict['w_model'] )
+        #self.w_optimizer.load_state_dict( state_dict['w_opt'] )
+        #self.w_scheduler.load_state_dict( state_dict['w_sched'] )
         self.current_epoch = state_dict['epoch']
