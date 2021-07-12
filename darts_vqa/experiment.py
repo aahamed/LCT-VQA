@@ -8,7 +8,8 @@ import factory
 import config
 from torch import nn
 from data_loader import get_loader
-from misc import num_correct, num_correct_qst
+from misc import num_correct, num_correct_qst, \
+    VqaStruct, calc_bleu_scores
 from itertools import cycle
 
 class Experiment( object ):
@@ -43,6 +44,7 @@ class Experiment( object ):
 
         self.qst_vocab = self.data_loader['train'].dataset.dataset.qst_vocab
         self.ans_vocab = self.data_loader['valid'].dataset.dataset.ans_vocab
+        self.vqa_struct = VqaStruct( args.input_dir, data_file='valid.npy' )
 
         # exp params
         self.epochs = args.num_epochs
@@ -120,6 +122,7 @@ class Experiment( object ):
             self.scheduler.step()
             self.save_model()
             self.save_stats()
+        self.val()
     
     def evaluate_gen_qst( self, batch_sample ):
         '''
@@ -237,6 +240,7 @@ class Experiment( object ):
         qst_corr_0 = 0
         qst_corr_3 = 0
         qst_corr_5 = 0
+        total_b4 = 0
         dataset = self.data_loader['valid'].dataset
         N = len(dataset)
         ans_unk_idx = dataset.dataset.ans_vocab.unk2idx
@@ -249,6 +253,7 @@ class Experiment( object ):
                 question = batch_sample['question'].to(config.DEVICE)
                 label = batch_sample['answer_label'].to(config.DEVICE)
                 multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
+                image_name = batch_sample['image_name']
                 
                 # get validation loss
                 ans_out, qst_out = self.vqa_model(image, question)
@@ -271,14 +276,22 @@ class Experiment( object ):
                 qst_corr_3 += q3
                 qst_corr_5 += q5
 
+                # bleu score
+                pred_qst, pred_ans = self.vqa_model.generate( image )
+                b4 = calc_bleu_scores( image_name, pred_qst,
+                    self.qst_vocab, self.vqa_struct )
+                total_b4 += b4
+
                 if batch_idx % self.report_freq == 0:
                     self.log( '| VAL SET | ' + 
                     f'EPOCH [{self.current_epoch+1:02d}/{self.epochs:02d}] ' +
                     f'Step [{batch_idx:04d}/{batch_step_size:04d}] ' +
-                    f'Loss: {loss.item():.4f}' )
+                    f'Loss: {loss.item():.4f} ' + 
+                    f'BLEU4: {b4:.4f}' )
         
         # print stats
         avg_loss = total_loss / batch_step_size
+        avg_b4 = total_b4 / batch_step_size
         ans_acc = ans_corr / N
         qst_acc_0 = qst_corr_0 / N
         qst_acc_3 = qst_corr_3 / N
@@ -290,7 +303,7 @@ class Experiment( object ):
                 f'{self.epochs:02d}] Loss: {avg_loss:.4f} ' +
                 f'Ans acc: {ans_acc:.4f} ' +
                 f'Qst acc: 0: {qst_acc_0:.4f} 3: {qst_acc_3:.4f} ' +
-                f' 5: {qst_acc_5:.4f}')
+                f' 5: {qst_acc_5:.4f} BLEU4: {avg_b4:.4f}')
 
     
     def save_model( self ):

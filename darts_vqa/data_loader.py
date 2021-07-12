@@ -32,6 +32,7 @@ class VqaDataset(data.Dataset):
         load_ans = self.load_ans
         
         image_path = vqa[idx]['image_path']
+        image_name = vqa[idx]['image_name']
         image = Image.open(image_path).convert('RGB')
         # padded with '<pad>' in 'ans_vocab'
         qst2idc = np.array([qst_vocab.word2idx('<pad>')] * max_qst_length)
@@ -39,7 +40,8 @@ class VqaDataset(data.Dataset):
         qst2idc[1:len(vqa[idx]['question_tokens'])+1] = \
                 [qst_vocab.word2idx(w) for w in vqa[idx]['question_tokens']]
         qst2idc[len(vqa[idx]['question_tokens'])+1] = qst_vocab.word2idx('<end>')
-        sample = {'image': image, 'question': qst2idc, 'image_path':image_path}
+        sample = {'image': image, 'question': qst2idc, 'image_path':image_path,
+            'image_name':image_name}
 
         if load_ans:
             ans2idc = [ans_vocab.word2idx(w) for w in vqa[idx]['valid_answers']]
