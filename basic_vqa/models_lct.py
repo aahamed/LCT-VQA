@@ -15,8 +15,9 @@ class ImgEncoder(nn.Module):
         Image Encoder using PC-DARTS
         """
         super(ImgEncoder, self).__init__()
-        # import pdb; pdb.set_trace()
         self.darts = Network( init_ch, embed_size, layers, vqa_model )
+        in_features = self.darts.output_ch * ( self.darts.output_size ** 2 )
+        self.fc = nn.Linear(in_features, embed_size)
 
 
     def forward(self, image):
@@ -25,6 +26,7 @@ class ImgEncoder(nn.Module):
         # import pdb; pdb.set_trace()
         # image has dimensions [ batch_size, 3, 224, 224 ]
         img_feature = self.darts( image )
+        img_feature = self.fc( img_feature )
         # img_feature has dimensions [ batch_size, embed_size ]
         l2_norm = img_feature.norm(p=2, dim=1, keepdim=True).detach()
         # l2 normalized feature vector

@@ -1,11 +1,14 @@
+import sys
+import os
+# add parent dir to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import config
-from .operations import *
+from pcdarts.operations import *
 from torch.autograd import Variable
-from .genotypes import PRIMITIVES
-from .genotypes import Genotype
+from pcdarts.genotypes import PRIMITIVES, Genotype
 import weakref
 
 def channel_shuffle(x, groups):
@@ -94,16 +97,12 @@ class Cell(nn.Module):
 class Network(nn.Module):
 
   def __init__(self, C, num_classes, layers, 
-          vqa_model, steps=4, multiplier=4, stem_multiplier=3 ):
+        steps=4, multiplier=4, stem_multiplier=3 ):
     super(Network, self).__init__()
     self._C = C
     self._num_classes = num_classes
     self._layers = layers
     self._criterion = nn.CrossEntropyLoss()
-    # note vqa_model is a circular reference
-    # it should not cause issues though
-    if vqa_model:
-        self._vqa_model = weakref.ref( vqa_model )
     self._steps = steps
     self._multiplier = multiplier
 
@@ -138,7 +137,7 @@ class Network(nn.Module):
 
   def new(self):
     model_new = Network(self._C, self._num_classes,
-            self._layers, self._vqa_model()).to( config.DEVICE )
+            self._layers).to( config.DEVICE )
     for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
         x.data.copy_(y.data)
     return model_new
@@ -202,6 +201,16 @@ class Network(nn.Module):
   def arch_parameters(self):
     return self._arch_parameters
 
+  def save_arch_parameters( self, save_path ):
+    state_dict = {
+        'arch_parameters': self._arch_parameters,
+    }
+    torch.save( state_dict, save_path )
+
+  def load_arch_parameters( self, load_path ):
+      state_dict = torch.load( load_path )
+      self._arch_parameters = state_dict['arch_parameters']
+
   def genotype(self):
 
     def _parse(weights,weights2):
@@ -254,10 +263,10 @@ def test():
     classes = 10
     layers = 4
     vqa_model = nn.Linear(1,1)
-    model = Network(init_channels, classes, layers, vqa_model).cuda()
+    model = Network(init_channels, classes, layers, vqa_model)
     batch_size = 4
     img_size = 64
-    img = torch.randn(batch_size, 3, img_size, img_size).cuda()
+    img = torch.randn(batch_size, 3, img_size, img_size)
     out = model( img )
     assert out.shape == ( batch_size, model.output_ch *
             model.output_size * model.output_size  )
