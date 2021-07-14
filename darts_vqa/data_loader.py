@@ -14,7 +14,6 @@ class VqaDataset(data.Dataset):
     '''
 
     def __init__(self, input_dir, input_vqa, max_qst_length=30, max_num_ans=10, transform=None):
-        # import pdb; pdb.set_trace()
         self.input_dir = input_dir
         self.vqa = np.load(input_dir+'/'+input_vqa, allow_pickle=True)
         self.qst_vocab = text_helper.VocabDict(input_dir+'/vocab_questions.txt')
@@ -104,7 +103,6 @@ class VqaDatasetUnified( VqaDataset ):
         qa2idc[qst_len+1] = unified_vocab.word2idx('<sep>')
 
         # get ans
-        import pdb; pdb.set_trace()
         ans = np.random.choice( vqa[idx]['valid_answers'] ).split()
         ans_len = len( ans )
         ans2idc = [unified_vocab.word2idx(w) for w in ans]
@@ -118,7 +116,7 @@ class VqaDatasetUnified( VqaDataset ):
         qa2idc[ptr] =  unified_vocab.word2idx('<end>')
 
         # create sample
-        sample = {'image': image, 'qa_str': qa2idc, 'answer_label': ans2idc}
+        sample = {'image': image, 'qa_str': qa2idc, 'image_name': image_name}
         
         if transform:
             sample['image'] = transform(sample['image'])
@@ -179,13 +177,10 @@ def get_loader(input_dir, input_vqa_train, input_vqa_valid,
         phase: data.Subset( vqa_dataset[ phase ], data_idc[ phase ] )
         for phase in [ 'train', 'valid' ] }
 
-    # import pdb; pdb.set_trace()
     data_loader = {
         phase: torch.utils.data.DataLoader(
             dataset=vqa_subset[phase],
             batch_size=batch_size,
-            #sampler=torch.utils.data.sampler.SubsetRandomSampler(
-            #    data_idc[phase] ),
             shuffle=True,
             num_workers=num_workers)
         for phase in ['train', 'valid']}
@@ -214,10 +209,15 @@ def test( unified ):
     import pdb; pdb.set_trace()
     train_loader = dataloader['train']
     batch_sample = next( iter( train_loader ) )
+    if unified:
+        unified_vocab = train_loader.dataset.dataset.unified_vocab
+        qa_arr = batch_sample['qa_str'][ 0 ]
+        qa_str = unified_vocab.arr2qst( qa_arr )
+        print( 'qa_str:', qa_str )
     print( 'Test passed!' ) 
 
 def main():
-    # test(unified=False)
+    test(unified=False)
     test(unified=True)
 
 if __name__ == '__main__':

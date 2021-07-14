@@ -1,14 +1,20 @@
 import torch.optim as optim
 from torch.optim import lr_scheduler
-from vqa_model import VqaModel
+from vqa_model import VqaModel, VqaModelUnified
 from pcdarts.architect_vqa import Architect
 
 def get_vqa_model( args, dataset ):
-    qst_vocab_size = dataset.qst_vocab.vocab_size
-    ans_vocab_size = dataset.ans_vocab.vocab_size
-    model = VqaModel( args.embed_size, qst_vocab_size,
-        ans_vocab_size, args.word_embed_size, args.num_layers,
-        args.hidden_size, args.arch_type )
+    if args.unified:
+        unified_vocab_size = dataset.unified_vocab.vocab_size
+        model = VqaModelUnified( args.embed_size, unified_vocab_size,
+                args.word_embed_size, args.num_layers, args.hidden_size,
+                args.arch_type )
+    else:
+        qst_vocab_size = dataset.qst_vocab.vocab_size
+        ans_vocab_size = dataset.ans_vocab.vocab_size
+        model = VqaModel( args.embed_size, qst_vocab_size,
+            ans_vocab_size, args.word_embed_size, args.num_layers,
+            args.hidden_size, args.arch_type )
     return model
 
 def get_optimizer( args, model ):

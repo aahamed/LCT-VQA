@@ -1,9 +1,16 @@
 import os
 import argparse
 from experiment import Experiment
+from exp_unified import ExperimentUnified
+
+def get_experiment( args ):
+    if args.unified:
+        return ExperimentUnified( args )
+    else:
+        return Experiment( args )
 
 def main(args):
-    exp = Experiment( args )
+    exp = get_experiment( args )
     exp.run()
 
 if __name__ == '__main__':
@@ -72,6 +79,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--resume', action='store_true',
                         help='resume experiment <exp> from last checkpoint' )
+    
+    parser.add_argument('--unified', action='store_true',
+                        help='run experiment on unified model' )
     
     parser.add_argument('--input_dir', type=str, default='../../data/vqa/inputs64',
                         help='vqa input dir' )

@@ -40,7 +40,8 @@ class Experiment( object ):
             max_num_ans=args.max_num_ans,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
-            train_portion=args.train_portion)
+            train_portion=args.train_portion,
+            unified=args.unified)
 
         self.qst_vocab = self.data_loader['train'].dataset.dataset.qst_vocab
         self.ans_vocab = self.data_loader['valid'].dataset.dataset.ans_vocab
@@ -65,6 +66,7 @@ class Experiment( object ):
         self.train_ans_acc = []
         self.val_loss = []
         self.val_ans_acc = []
+        self.val_b4 = []
 
         self.load_experiment()
         self.log( f'seed is: {seed}' )
@@ -298,6 +300,7 @@ class Experiment( object ):
         qst_acc_5 = qst_corr_5 / N
         self.val_loss.append( avg_loss )
         self.val_ans_acc.append( ans_acc )
+        self.val_b4.append( avg_b4 )
 
         self.log( f'| VAL_SET | EPOCH [{self.current_epoch+1:02d}/' +
                 f'{self.epochs:02d}] Loss: {avg_loss:.4f} ' +
@@ -337,6 +340,7 @@ class Experiment( object ):
             'train_ans_acc': self.train_ans_acc,
             'val_loss': self.val_loss,
             'val_ans_acc': self.val_ans_acc,
+            'val_b4': self.val_b4,
         }
         epoch = self.current_epoch+1
         torch.save( stat_dict, save_path )
@@ -348,3 +352,5 @@ class Experiment( object ):
         self.train_ans_acc = stat_dict['train_ans_acc']
         self.val_loss = stat_dict['val_loss']
         self.val_ans_acc = stat_dict['val_ans_acc']
+        self.val_b4 = stat_dict['val_b4']
+

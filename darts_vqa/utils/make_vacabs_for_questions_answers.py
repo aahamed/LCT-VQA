@@ -113,8 +113,8 @@ def main(args):
     input_dir = args.input_dir
     output_dir = args.output_dir
     n_answers = args.n_answers
-    #make_vocab_questions(input_dir+'/Questions', output_dir)
-    #make_vocab_answers(input_dir+'/Annotations', n_answers, output_dir)
+    make_vocab_questions(input_dir+'/Questions', output_dir)
+    make_vocab_answers(input_dir+'/Annotations', n_answers, output_dir)
     make_vocab_unified(output_dir)
 
 
