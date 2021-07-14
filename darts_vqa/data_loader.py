@@ -8,6 +8,10 @@ from utils import text_helper
 
 
 class VqaDataset(data.Dataset):
+    '''
+    Original VQA dataset
+    Returns qst and ans seperately
+    '''
 
     def __init__(self, input_dir, input_vqa, max_qst_length=30, max_num_ans=10, transform=None):
         # import pdb; pdb.set_trace()
@@ -19,6 +23,7 @@ class VqaDataset(data.Dataset):
         self.max_num_ans = max_num_ans
         self.load_ans = ('valid_answers' in self.vqa[0]) and (self.vqa[0]['valid_answers'] is not None)
         self.transform = transform
+
 
     def __getitem__(self, idx):
         
@@ -64,8 +69,83 @@ class VqaDataset(data.Dataset):
 
         return len(self.vqa)
 
+class VqaDatasetUnified( VqaDataset ):
+    '''
+    Returns qst+ans in a concatenated string separated by <sep> token
+    '''
+    
+    def __init__(self, input_dir, input_vqa,
+            max_qst_length=30, max_num_ans=10, transform=None):
+        super(VqaDatasetUnified, self).__init__(input_dir, input_vqa,
+                max_qst_length, max_num_ans, transform)
+        self.unified_vocab = text_helper.VocabDict(input_dir+'/vocab_unified.txt')
 
-def get_loader(input_dir, input_vqa_train, input_vqa_valid, max_qst_length, max_num_ans, batch_size, num_workers, train_portion):
+    def __getitem__(self, idx):
+        vqa = self.vqa
+        unified_vocab = self.unified_vocab
+        max_qst_length = self.max_qst_length
+        max_num_ans = self.max_num_ans
+        transform = self.transform
+        load_ans = self.load_ans
+        
+        # get image
+        image_path = vqa[idx]['image_path']
+        image_name = vqa[idx]['image_name']
+        image = Image.open(image_path).convert('RGB')
+
+        # get qst
+        qst_len = len(vqa[idx]['question_tokens'])
+        qa2idc = np.array([unified_vocab.word2idx('<pad>')] * max_qst_length)
+        qa2idc[0] = unified_vocab.word2idx('<start>')
+        qa2idc[1:qst_len+1] = \
+                [unified_vocab.word2idx(w) for w in vqa[idx]['question_tokens']]
+        
+        # add <sep> token
+        qa2idc[qst_len+1] = unified_vocab.word2idx('<sep>')
+
+        # get ans
+        import pdb; pdb.set_trace()
+        ans = np.random.choice( vqa[idx]['valid_answers'] ).split()
+        ans_len = len( ans )
+        ans2idc = [unified_vocab.word2idx(w) for w in ans]
+
+        # add ans to end of qst
+        ptr = qst_len+2
+        qa2idc[ptr:ptr+ans_len] = ans2idc
+
+        # add <end> to end of ans
+        ptr = ptr+ans_len
+        qa2idc[ptr] =  unified_vocab.word2idx('<end>')
+
+        # create sample
+        sample = {'image': image, 'qa_str': qa2idc, 'answer_label': ans2idc}
+        
+        if transform:
+            sample['image'] = transform(sample['image'])
+
+        return sample
+
+
+def get_dataset( input_dir, input_vqa, max_qst_length,
+        max_num_ans, transform, unified=False ):
+    if unified:
+        return VqaDatasetUnified(
+            input_dir=input_dir,
+            input_vqa=input_vqa,
+            max_qst_length=max_qst_length,
+            max_num_ans=max_num_ans,
+            transform=transform )
+    else:
+        return VqaDataset(
+            input_dir=input_dir,
+            input_vqa=input_vqa,
+            max_qst_length=max_qst_length,
+            max_num_ans=max_num_ans,
+            transform=transform )
+
+def get_loader(input_dir, input_vqa_train, input_vqa_valid,
+        max_qst_length, max_num_ans, batch_size, num_workers,
+        train_portion, unified=False):
 
     transform = {
         phase: transforms.Compose([transforms.ToTensor(),
@@ -74,18 +154,20 @@ def get_loader(input_dir, input_vqa_train, input_vqa_valid, max_qst_length, max_
         for phase in ['train', 'valid']}
 
     vqa_dataset = {
-        'train': VqaDataset(
+        'train': get_dataset(
             input_dir=input_dir,
             input_vqa=input_vqa_train,
             max_qst_length=max_qst_length,
             max_num_ans=max_num_ans,
-            transform=transform['train']),
-        'valid': VqaDataset(
+            transform=transform['train'],
+            unified=unified ),
+        'valid': get_dataset(
             input_dir=input_dir,
             input_vqa=input_vqa_valid,
             max_qst_length=max_qst_length,
             max_num_ans=max_num_ans,
-            transform=transform['valid'])}
+            transform=transform['valid'],
+            unified=unified ) }
 
     # indices for subset
     data_idc = {
@@ -110,7 +192,7 @@ def get_loader(input_dir, input_vqa_train, input_vqa_valid, max_qst_length, max_
 
     return data_loader
 
-def test():
+def test( unified ):
     input_dir = '../../data/vqa/inputs64'
     max_qst_length = 30
     max_num_ans = 10
@@ -125,17 +207,18 @@ def test():
         max_num_ans=max_num_ans,
         batch_size=batch_size,
         num_workers=num_workers,
-        train_portion=train_portion)
+        train_portion=train_portion,
+        unified=unified)
     print( 'len dataloader train:', len( dataloader['train'] ) )
     print( 'len dataloader valid:', len( dataloader['valid'] ) )
     import pdb; pdb.set_trace()
     train_loader = dataloader['train']
     batch_sample = next( iter( train_loader ) )
-    a = 1
-    
+    print( 'Test passed!' ) 
 
 def main():
-    test()
+    # test(unified=False)
+    test(unified=True)
 
 if __name__ == '__main__':
     main()
