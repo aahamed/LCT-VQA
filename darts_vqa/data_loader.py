@@ -116,7 +116,8 @@ class VqaDatasetUnified( VqaDataset ):
         qa2idc[ptr] =  unified_vocab.word2idx('<end>')
 
         # create sample
-        sample = {'image': image, 'qa_str': qa2idc, 'image_name': image_name}
+        sample = {'image': image, 'qa_str': qa2idc, 'image_name': image_name,
+                'image_path': image_path}
         
         if transform:
             sample['image'] = transform(sample['image'])

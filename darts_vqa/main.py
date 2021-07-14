@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=8,
                         help='number of processes working on cpu.')
 
-    parser.add_argument('--num_epochs', type=int, default=30,
+    parser.add_argument('--num_epochs', type=int, default=20,
                         help='number of epochs.')
 
     parser.add_argument('--batch_size', type=int, default=64,
