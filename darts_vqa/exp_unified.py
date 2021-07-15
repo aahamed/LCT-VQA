@@ -7,6 +7,7 @@ import torch
 from experiment import Experiment
 from torch import nn
 from misc import unified_ans_acc, calc_bleu_scores_unified
+from itertools import cycle
 
 class ExperimentUnified( Experiment ):
 
@@ -44,12 +45,26 @@ class ExperimentUnified( Experiment ):
         total_loss = 0
         total_ans_acc = 0
         num_batches = len( self.data_loader['train'] )
+        valid_queue_iter = cycle( iter( self.data_loader['valid'] ) )
+        lr = self.scheduler.get_lr()[0]
         # import pdb; pdb.set_trace()
 
         for batch_idx, batch_sample in enumerate( self.data_loader['train'] ):
             # get training data
             image = batch_sample['image'].to(config.DEVICE)
             qa_str = batch_sample['qa_str'].to(config.DEVICE)
+            
+            
+            # STAGE1: architecture update
+            if self.arch_type == 'darts' and \
+                    ( batch_idx % self.arch_update_freq == 0 ):
+                batch_sample = next( valid_queue_iter )
+                val_image = batch_sample['image'].to(config.DEVICE)
+                val_qa_str = batch_sample['qa_str'].to(config.DEVICE)
+                label, val_label = None, None
+                # import pdb; pdb.set_trace()
+                self.architect.step( image, qa_str, label,
+                        val_image, val_qa_str, val_label, lr )
             
             # train model
             self.optimizer.zero_grad()
@@ -68,7 +83,7 @@ class ExperimentUnified( Experiment ):
             total_ans_acc += ans_acc
 
             if batch_idx % self.report_freq == 0:
-                self.log( '| TRAIN SET | STAGE1 | ' + 
+                self.log( '| TRAIN SET | STAGE2 | ' + 
                 f'EPOCH [{self.current_epoch+1:02d}/{self.epochs:02d}] ' +
                 f'Step [{batch_idx:04d}/{num_batches:04d}] ' +
                 f'Loss: {loss.item():.4f} Ans-acc: {ans_acc:.4f}' )

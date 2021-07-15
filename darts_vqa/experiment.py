@@ -341,6 +341,7 @@ class Experiment( object ):
             'val_loss': self.val_loss,
             'val_ans_acc': self.val_ans_acc,
             'val_b4': self.val_b4,
+            'args': self.args,
         }
         epoch = self.current_epoch+1
         torch.save( stat_dict, save_path )

@@ -403,6 +403,23 @@ class VqaModelUnified( VqaModelBase ):
         # generate question+answer string
         qa_out = self.qa_encoder.generate(img_feature)
         return qa_out
+    
+    def new(self):
+        new_darts = self.img_encoder.darts.new()
+        new_model = VqaModelUnified(self.embed_size,
+                self.unified_vocab_size, self.word_embed_size,
+                self.num_layers, self.hidden_size,
+                self.img_encoder_type)
+        new_model.img_encoder.darts = new_darts
+        new_model.to( config.DEVICE )
+        return new_model
+    
+    def _loss(self, images, qa_gt, labels=None, qst_only=False):
+        qa_out = self( images, qa_gt )
+        qa_gt_flat = qa_gt[:, 1:].flatten()
+        qa_out_flat = qa_out[:, :-1].flatten(end_dim=1)
+        loss = self.criterion(qa_out_flat, qa_gt_flat)
+        return loss
 
 def test( model ):
     import pdb; pdb.set_trace()
@@ -485,6 +502,9 @@ def test_unified():
     assert qa_out.shape == ( batch_size, qst_max_len, unified_vocab_size )
     qa_gen = model.generate( img )
     assert qa_gen.shape == ( batch_size, qst_max_len )
+    # test architecture loss api
+    new_model = model.new()
+    loss = new_model._loss( img, qst )
     print( 'Test passed!' )
 
 def main():

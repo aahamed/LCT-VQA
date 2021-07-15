@@ -39,7 +39,7 @@ class Architect(object):
 
   def step(self, img_train, qst_train, label_train,
           img_valid, qst_valid, label_valid, 
-          eta=None, network_optimizer=None, unrolled=True):
+          eta, network_optimizer=None, unrolled=True):
     # import pdb; pdb.set_trace()
     self.optimizer.zero_grad()
     if unrolled:
