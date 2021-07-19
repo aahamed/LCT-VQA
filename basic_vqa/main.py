@@ -11,11 +11,14 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--w_gamma', type=float, default=1.0,
+                        help='gamma for w model')
 
-    parser.add_argument('--num_epochs', type=int, default=30,
+    parser.add_argument('--num_epochs', type=int, default=20,
                         help='number of epochs.')
 
-    parser.add_argument('--batch_size', type=int, default=256,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help='batch_size.')
 
     parser.add_argument('--train_portion', type=float, default=1.,
@@ -33,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--arch_type', type=str, default='fixed',
                         help='architecture type. Options: [ fixed, darts ]')
     
-    parser.add_argument('--arch_update_freq', type=int, default=1000,
+    parser.add_argument('--arch_update_freq', type=int, default=100,
                         help='architecture update frequency ( default: 1000 )')
 
     parser.add_argument('--skip_stage2', action='store_true',

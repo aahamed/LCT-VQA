@@ -115,10 +115,13 @@ class VqaModel(nn.Module):
         loss = self.criterion( ans_out, labels )
         return loss
 
-    def _soft_loss(self, images, questions, soft_labels):
-        ans_out = self( images, questions )
-        assert ans_out.shape == soft_labels.shape
-        loss = softXEnt( ans_out, soft_labels )
+    def _soft_loss(self, images, questions, labels, pseudo_qst,
+            pseudo_labels):
+        ans_out_1 = self( images, questions )
+        loss_1 = self.criterion( ans_out_1, labels )
+        ans_out_2 = self( images, pseudo_qst )
+        loss_2 = softXEnt( ans_out_2, pseudo_labels )
+        loss = loss_1 + config.W_GAMMA * loss_2
         return loss
 
 def test():

@@ -210,6 +210,10 @@ class Network(nn.Module):
   def load_arch_parameters( self, load_path ):
       state_dict = torch.load( load_path )
       self._arch_parameters = state_dict['arch_parameters']
+      self.alphas_normal = self._arch_parameters[0]
+      self.alphas_reduce = self._arch_parameters[1]
+      self.betas_normal = self._arch_parameters[2]
+      self.betas_reduce = self._arch_parameters[3]
 
   def genotype(self):
 

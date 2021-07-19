@@ -27,7 +27,7 @@ WEIGHT_DECAY=0
 # period of learning rate decay
 STEP_SIZE=10
 # multiplicative factor of learning rate decay
-GAMMA=0.1
+LR_DECAY=0.1
 # number of processes working on cpu 
 NUM_WORKERS=8
 # learning rate for arch encoding (darts)
@@ -63,17 +63,19 @@ ARCH_UPDATE_FREQ = 2000
 # architecture update frequency min
 ARCH_UPDATE_FREQ_MIN = 100
 # architecture update frequency decay
-GAMMA_ARCH = 0.5
+ARCH_FREQ_DECAY = 0.5
 # skip stage 2
 SKIP_STAGE2 = False
 # flag to use pretrained img encoder
 PRETRAIN_ENC = True
+# Gamma for w model
+W_GAMMA = 1.0
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
             SKIP_STAGE2, ARCH_UPDATE_FREQ, PRETRAIN_ENC, \
-            REPORT_FREQ
+            REPORT_FREQ, W_GAMMA
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
@@ -85,3 +87,4 @@ def update_config( args ):
     ARCH_UPDATE_FREQ = args.arch_update_freq
     PRETRAIN_ENC = not args.no_pretrain_enc
     REPORT_FREQ = 10 if ARCH_TYPE == 'darts' else 100
+    W_GAMMA = args.w_gamma

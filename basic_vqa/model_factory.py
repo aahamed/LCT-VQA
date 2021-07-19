@@ -23,7 +23,7 @@ def get_ef_optimizer( model ):
 
 def get_ef_scheduler( optimizer ):
     scheduler = lr_scheduler.StepLR(
-            optimizer, step_size=config.STEP_SIZE, gamma=config.GAMMA)
+            optimizer, step_size=config.STEP_SIZE, gamma=config.LR_DECAY)
     return scheduler
 
 def get_w_model( dataset ):
@@ -44,5 +44,5 @@ def get_w_optimizer( model ):
 
 def get_w_scheduler( optimizer ):
     scheduler = lr_scheduler.StepLR(
-            optimizer, step_size=config.STEP_SIZE, gamma=config.GAMMA)
+            optimizer, step_size=config.STEP_SIZE, gamma=config.LR_DECAY)
     return scheduler
