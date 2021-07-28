@@ -202,7 +202,7 @@ class Experiment( object ):
             question = batch_sample['question'].to(config.DEVICE)
             label = batch_sample['answer_label'].to(config.DEVICE)
             multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
-            
+ 
             if config.ARCH_TYPE == 'darts' and \
                     ( batch_idx % self.arch_update_freq == 0 ):
                 # STAGE 3: Architecture Search
@@ -262,10 +262,10 @@ class Experiment( object ):
                 nn.utils.clip_grad_norm_(self.w_model.parameters(), config.GRAD_CLIP)
                 self.w_optimizer.step()
                 w_pred_1 = torch.argmax( w_out_1, 1 )
-                w_corr += ( w_pred_1 == label )
+                w_corr += ( w_pred_1 == label ).sum().item()
                 w_pred_2 = torch.argmax( w_out_2, 1 )
                 pseudo_pred = torch.argmax( pseudo_ans, 1 )
-                w_corr += ( w_pred == pseudo_pred ).sum().item()
+                w_corr += ( w_pred_2 == pseudo_pred ).sum().item()
                 w_loss += loss.item()
                 if batch_idx % config.REPORT_FREQ == 0:
                     self.log( ( '| TRAIN SET | STAGE2 | Epoch [{:02d}/{:02d}], ' +

@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--arch_type', type=str, default='fixed',
                         help='architecture type. Options: [ fixed, darts ]')
     
-    parser.add_argument('--arch_update_freq', type=int, default=100,
+    parser.add_argument('--arch_update_freq', type=int, default=1000,
                         help='architecture update frequency ( default: 1000 )')
 
     parser.add_argument('--skip_stage2', action='store_true',

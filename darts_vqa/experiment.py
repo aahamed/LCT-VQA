@@ -158,10 +158,7 @@ class Experiment( object ):
         self.vqa_model.train()
         total_loss = 0
         ans_corr = 0
-        qst_corr_0 = 0
-        qst_corr_3 = 0
-        qst_corr_5 = 0
-        batch_step_size = len( self.data_loader['train'] )
+        num_batches = len( self.data_loader['train'] )
         dataset = self.data_loader['train'].dataset
         ans_unk_idx = dataset.dataset.ans_vocab.unk2idx
         N = len( dataset )
@@ -207,30 +204,21 @@ class Experiment( object ):
             _, pred = torch.max(ans_out, dim=1)
             pred[ pred==ans_unk_idx ] = -9999
             ans_corr += num_correct( pred.cpu(), multi_choice )
-            q0, q3, q5 = num_correct_qst( qst_out, question )
-            qst_corr_0 += q0
-            qst_corr_3 += q3
-            qst_corr_5 += q5
 
             if batch_idx % self.report_freq == 0:
                 self.log( '| TRAIN SET | STAGE2 | ' + 
                 f'EPOCH [{self.current_epoch+1:02d}/{self.epochs:02d}] ' +
-                f'Step [{batch_idx:04d}/{batch_step_size:04d}] ' +
+                f'Step [{batch_idx:04d}/{num_batches:04d}] ' +
                 f'Loss: {loss.item():.4f}' )
 
-        avg_loss = total_loss / batch_step_size
+        avg_loss = total_loss / num_batches
         ans_acc = ans_corr / N
-        qst_acc_0 = qst_corr_0 / N
-        qst_acc_3 = qst_corr_3 / N
-        qst_acc_5 = qst_corr_5 / N
         self.train_loss.append( avg_loss )
         self.train_ans_acc.append( ans_acc )
 
         self.log( f'| TRAIN_SET | EPOCH [{self.current_epoch+1:02d}/' +
                 f'{self.epochs:02d}] Loss: {avg_loss:.4f} ' +
-                f'Ans-acc: {ans_acc:.4f} ' +
-                f'Qst-acc: 0: {qst_acc_0:.4f} 3: {qst_acc_3:.4f} ' +
-                f' 5: {qst_acc_5:.4f}')
+                f'Ans-acc: {ans_acc:.4f} ' )
        
         # check generated question quality
         self.evaluate_gen_qst( batch_sample )
@@ -239,14 +227,11 @@ class Experiment( object ):
         self.vqa_model.eval()
         total_loss = 0
         ans_corr = 0
-        qst_corr_0 = 0
-        qst_corr_3 = 0
-        qst_corr_5 = 0
         total_b4 = 0
         dataset = self.data_loader['valid'].dataset
         N = len(dataset)
         ans_unk_idx = dataset.dataset.ans_vocab.unk2idx
-        batch_step_size = len( self.data_loader['valid'] )
+        num_batches = len( self.data_loader['valid'] )
 
         with torch.no_grad():
             for batch_idx, batch_sample in enumerate( self.data_loader['valid'] ):
@@ -273,10 +258,6 @@ class Experiment( object ):
                 pred = torch.argmax(ans_out, dim=1)
                 pred[ pred==ans_unk_idx ] = -9999
                 ans_corr += num_correct( pred.cpu(), multi_choice )
-                q0, q3, q5 = num_correct_qst( qst_out, question )
-                qst_corr_0 += q0
-                qst_corr_3 += q3
-                qst_corr_5 += q5
 
                 # bleu score
                 pred_qst, pred_ans = self.vqa_model.generate( image )
@@ -287,17 +268,14 @@ class Experiment( object ):
                 if batch_idx % self.report_freq == 0:
                     self.log( '| VAL SET | ' + 
                     f'EPOCH [{self.current_epoch+1:02d}/{self.epochs:02d}] ' +
-                    f'Step [{batch_idx:04d}/{batch_step_size:04d}] ' +
+                    f'Step [{batch_idx:04d}/{num_batches:04d}] ' +
                     f'Loss: {loss.item():.4f} ' + 
                     f'BLEU4: {b4:.4f}' )
         
         # print stats
-        avg_loss = total_loss / batch_step_size
-        avg_b4 = total_b4 / batch_step_size
+        avg_loss = total_loss / num_batches
+        avg_b4 = total_b4 / num_batches
         ans_acc = ans_corr / N
-        qst_acc_0 = qst_corr_0 / N
-        qst_acc_3 = qst_corr_3 / N
-        qst_acc_5 = qst_corr_5 / N
         self.val_loss.append( avg_loss )
         self.val_ans_acc.append( ans_acc )
         self.val_b4.append( avg_b4 )
@@ -305,8 +283,7 @@ class Experiment( object ):
         self.log( f'| VAL_SET | EPOCH [{self.current_epoch+1:02d}/' +
                 f'{self.epochs:02d}] Loss: {avg_loss:.4f} ' +
                 f'Ans acc: {ans_acc:.4f} ' +
-                f'Qst acc: 0: {qst_acc_0:.4f} 3: {qst_acc_3:.4f} ' +
-                f' 5: {qst_acc_5:.4f} BLEU4: {avg_b4:.4f}')
+                f'BLEU4: {avg_b4:.4f}' )
 
     
     def save_model( self ):

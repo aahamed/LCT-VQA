@@ -8,7 +8,7 @@ from models import VqaModel as WModel, softXEnt
 
 class ImgEncoder(nn.Module):
 
-    def __init__(self, embed_size, vqa_model, init_ch=16, layers=8):
+    def __init__(self, embed_size, vqa_model, init_ch=16, layers=4):
         """
         Image Encoder using PC-DARTS
         """
