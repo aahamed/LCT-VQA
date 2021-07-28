@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--w_gamma', type=float, default=1.0,
+    parser.add_argument('--w_lambda', type=float, default=1.0,
                         help='gamma for w model')
 
     parser.add_argument('--num_epochs', type=int, default=20,
@@ -41,6 +41,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--skip_stage2', action='store_true',
                         help='Skip Stage2 of algorithm')
+    
+    parser.add_argument('--skip_stage3', action='store_true',
+                        help='Skip Stage3 of algorithm')
     
     parser.add_argument('--no_pretrain_enc', action='store_true',
                         help='Don\'t use a pretrained encoder')

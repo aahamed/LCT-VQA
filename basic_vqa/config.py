@@ -66,16 +66,18 @@ ARCH_UPDATE_FREQ_MIN = 100
 ARCH_FREQ_DECAY = 0.5
 # skip stage 2
 SKIP_STAGE2 = False
+# skip stage 3
+SKIP_STAGE3 = True
 # flag to use pretrained img encoder
 PRETRAIN_ENC = True
 # Gamma for w model
-W_GAMMA = 1.0
+W_LAMBDA = 1.0
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
             SKIP_STAGE2, ARCH_UPDATE_FREQ, PRETRAIN_ENC, \
-            REPORT_FREQ, W_GAMMA
+            REPORT_FREQ, W_LAMBDA, SKIP_STAGE3
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
@@ -87,4 +89,5 @@ def update_config( args ):
     ARCH_UPDATE_FREQ = args.arch_update_freq
     PRETRAIN_ENC = not args.no_pretrain_enc
     REPORT_FREQ = 10 if ARCH_TYPE == 'darts' else 100
-    W_GAMMA = args.w_gamma
+    W_LAMBDA = args.w_lambda
+    SKIP_STAGE3 = args.skip_stage3

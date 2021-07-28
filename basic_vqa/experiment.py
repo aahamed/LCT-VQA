@@ -204,7 +204,8 @@ class Experiment( object ):
             multi_choice = batch_sample['answer_multi_choice']  # not tensor, list.
  
             if config.ARCH_TYPE == 'darts' and \
-                    ( batch_idx % self.arch_update_freq == 0 ):
+                    ( batch_idx % self.arch_update_freq == 0 ) and \
+                    not config.SKIP_STAGE3:
                 # STAGE 3: Architecture Search
                 # Update architecture of E in encoder-decoder model 
                 # using validation data
