@@ -70,14 +70,17 @@ SKIP_STAGE2 = False
 SKIP_STAGE3 = True
 # flag to use pretrained img encoder
 PRETRAIN_ENC = True
-# Gamma for w model
+# lambda for w model
 W_LAMBDA = 1.0
+# use old dataloader
+USE_OLD_DATALOADER = False
 
 def update_config( args ):
     global BATCH_SIZE, NUM_EPOCHS, TRAIN_PORTION, \
             EXP_NAME, RESUME, NUM_WORKERS, ARCH_TYPE,\
             SKIP_STAGE2, ARCH_UPDATE_FREQ, PRETRAIN_ENC, \
-            REPORT_FREQ, W_LAMBDA, SKIP_STAGE3
+            REPORT_FREQ, W_LAMBDA, SKIP_STAGE3, \
+            USE_OLD_DATALOADER, INPUT_DIR
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.num_epochs
     TRAIN_PORTION = args.train_portion
@@ -91,3 +94,5 @@ def update_config( args ):
     REPORT_FREQ = 10 if ARCH_TYPE == 'darts' else 100
     W_LAMBDA = args.w_lambda
     SKIP_STAGE3 = args.skip_stage3
+    USE_OLD_DATALOADER = args.use_old_dataloader
+    INPUT_DIR = args.input_dir

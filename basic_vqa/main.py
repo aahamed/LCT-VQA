@@ -29,6 +29,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--resume', action='store_true',
                         help='resume experiment <exp> from last checkpoint' )
+    
+    parser.add_argument('--input_dir', type=str, default='../../data/vqa/hdf5_64',
+                        help='input data dir' )
 
     parser.add_argument('--num_workers', type=int, default=4,
                         help='number of processes working on cpu.')
@@ -47,6 +50,9 @@ if __name__ == '__main__':
     
     parser.add_argument('--no_pretrain_enc', action='store_true',
                         help='Don\'t use a pretrained encoder')
+    
+    parser.add_argument('--use_old_dataloader', action='store_true',
+                        help='use old dataloader')
     
     args = parser.parse_args()
 

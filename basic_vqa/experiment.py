@@ -8,7 +8,7 @@ import numpy as np
 import torch.nn.functional as F
 from datetime import datetime
 from torch import nn
-from data_loader import get_loader
+from data_factory import get_dataloader
 from model_factory import *
 from architect_factory import get_architect
 from itertools import cycle
@@ -38,21 +38,14 @@ class Experiment( object ):
         np.random.seed( seed )
 
         # get dataloaders for training and validation
-        self.data_loader = get_loader(
-            input_dir=config.INPUT_DIR,
-            input_vqa_train='train.npy',
-            input_vqa_valid='valid.npy',
-            max_qst_length=config.MAX_QST_LEN,
-            max_num_ans=config.MAX_NUM_ANS,
-            batch_size=config.BATCH_SIZE,
-            num_workers=config.NUM_WORKERS,
-            train_portion=config.TRAIN_PORTION)
+        self.data_loader = get_dataloader()
 
         self.qst_vocab = self.data_loader['train'].\
                 dataset.dataset.qst_vocab
         self.ans_vocab = self.data_loader['train'].\
                 dataset.dataset.ans_vocab
-        self.vqa_struct = VqaStruct( config.INPUT_DIR,
+        # hack input_dir for now
+        self.vqa_struct = VqaStruct( '../../data/vqa/inputs64',
                 data_file='valid.npy' ) 
 
         # setup experiment params
