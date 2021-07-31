@@ -251,7 +251,7 @@ class Experiment( object ):
                 loss_1 = self.criterion( w_out_1, label)
                 w_out_2 = self.w_model( image, pseudo_qst )
                 loss_2 = softXEnt( w_out_2, pseudo_ans )
-                loss = loss_1 + config.W_GAMMA * loss_2
+                loss = loss_1 + config.W_LAMBDA * loss_2
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.w_model.parameters(), config.GRAD_CLIP)
                 self.w_optimizer.step()

@@ -121,7 +121,7 @@ class VqaModel(nn.Module):
         loss_1 = self.criterion( ans_out_1, labels )
         ans_out_2 = self( images, pseudo_qst )
         loss_2 = softXEnt( ans_out_2, pseudo_labels )
-        loss = loss_1 + config.W_GAMMA * loss_2
+        loss = loss_1 + config.W_LAMBDA * loss_2
         return loss
 
 def test():
